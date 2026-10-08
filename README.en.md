@@ -19,6 +19,13 @@
 
 Continue conversations, follow task progress, decide approvals, switch permissions and models, or edit authorized server files from your phone. The app defaults to Chinese and can switch to English in Settings.
 
+> **DSH 0.2.x compatibility**: this branch fixes an enum-contract mismatch with DSH 0.2.x on top of
+> upstream `v1.0.0`. DSH 0.2.x no longer returns `trust` on `AgentPreset`, while the client's strict
+> decoder requires it, so the Agent preset picker failed entirely with
+> `Field 'trust' is required ... missing at path: $.items[0]`. The fix adds defaults to optional
+> fields so a single missing field can no longer break the whole list.
+> Details and test results are in [the development log](./docs/project/CHANGELOG-DEV.md).
+
 ## Screenshots
 
 <p align="center">

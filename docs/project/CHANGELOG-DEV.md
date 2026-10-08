@@ -1,5 +1,33 @@
 # 开发日志
 
+## 2026-10-08 · 兼容 DSH 0.2.x 的字符串枚举契约（下游分支）
+
+- **背景**：上游 `Hakunm/dsh-android-app` v1.0.0 使用 kotlinx.serialization 严格解码。
+  `AgentPreset.trust` 为无默认值的必填字段；而 DSH 0.2.x 的 `AgentPreset` / `AgentPresetRow`
+  已移除 system/user 二分，**服务端不再返回该字段**。客户端因此对整个列表报错：
+  `Field 'trust' is required for type with serial name '...AgentPreset', but it was missing at path: $.items[0]`，
+  表现为 Agent 预设选择器完全打不开。
+- **做法**：给 `AgentPreset.trust` 加默认值 `"system"`，并同时给 `isDefault` / `available`
+  补上安全默认值。这样**服务端缺少任一可选字段时，一个字段的缺失不会再拖垮整个列表**。
+  同批在服务端（`dsh-workspace` 的兼容层）也补了该字段，两端互为保险。
+- **为什么改客户端而不是只改服务端**：严格解码在遇到未知/缺失字段时是「全有或全无」的。
+  客户端不应假定某个具体内核版本一定返回某个可选字段；给可选字段默认值是更稳的防线。
+- **构建环境说明**：本次构建在无外网代理的环境下完成，构建时临时使用了国内镜像
+  （`settings.gradle.kts` 指向阿里云与 `dl.google.com`，Gradle wrapper 指向腾讯镜像）。
+  **这些改动未包含在本分支中**——本分支相对上游只保留与修复直接相关的文件，
+  以便差异最小、便于审阅。
+- **验证**：
+  - `./gradlew assembleRelease` 构建成功，产物 `app-release.apk` 2,561,512 字节，
+    与上游 v1.0.0 产物同尺寸（R8 优化后恰好一致）。
+  - 逐 dex 比对确认改动**确实编译入包**：`classes.dex` 由 3,709,572 字节变为 3,709,696 字节
+    （+124，即新增默认值产生的字节码），`AgentPreset` 符号在包内存在。
+  - APK 已用自签密钥签名并验签通过（`CN=DSH Pocket Client`，
+    SHA-256 `4e7fa1db395c4a2436e7a96fcdf6c606e20a14bad55dfcd60c80892f4f92deb3`）。
+  - 装机实测：连接 DSH 0.2.x + `dsh-workspace` 兼容层后，Agent 预设列表可正常打开，
+    会话模型、历史记录、流式输出、命令菜单均正常。
+- 产物 `DeepSeek-Harness-compat02-release.apk`（SHA-256 `4df87f47…`）随分支提供；
+  签名密钥 `dsh-release.jks` **不进入仓库**。
+
 ## 2026-08-15 · v1.0.0
 
 - 完成 `DOC-002` 与 `REL-004`：README 扩展为 6 张用户提供的真实手机截图，新增文件浏览与新建工作区界面，删除中英文截图来源说明；GitHub topics 加入 `dsh-plugin`，公开分支和标签继续保持单一根提交。

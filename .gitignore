@@ -14,3 +14,7 @@ artifacts/*
 *.jks
 *.keystore
 signing.properties
+!artifacts/DeepSeek-Harness-compat02-release.apk
+
+# Local build-environment backups (mirror rewrites), not part of the change
+*.orig

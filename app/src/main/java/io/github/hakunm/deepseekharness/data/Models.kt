@@ -119,9 +119,13 @@ data class AgentPreset(
     val id: String,
     val name: String,
     val description: String? = null,
-    val trust: String,
-    val isDefault: Boolean,
-    val available: Boolean,
+    // DSH 0.2.x dropped the `system`/`user` trust split: `AgentPresetRow` carries
+    // no such field, and a strict decoder rejects the whole list with
+    // "Field 'trust' is required ... missing at path: $.items[0]". Default it so
+    // one absent optional field cannot break the preset picker.
+    val trust: String = "system",
+    val isDefault: Boolean = false,
+    val available: Boolean = true,
 )
 
 @Serializable
