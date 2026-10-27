@@ -90,10 +90,24 @@ class DshClientTest {
         server.enqueue(MockResponse().setBody("""{"events":[],"hasMore":false}""").setHeader("Content-Type", "application/json"))
         val client = DshClient(server.url("/").toString(), "device-token")
 
-        client.history("session/1", beforeSeq = 42, maxMessages = 25)
+        assertEquals(emptyList<HistoryEntry>(), client.history("session/1", beforeSeq = 42, maxMessages = 25).events)
 
         val request = server.takeRequest()
         assertEquals("/api/v1/chat/sessions/session%2F1/messages?beforeSeq=42&maxMessages=25", request.path)
+    }
+
+    @Test
+    fun decodesBareSessionWireHistoryFromWorkspace11() {
+        server.enqueue(MockResponse().setBody(
+            """{"events":[{"type":"user/message","seq":1,"time":1761500000000,"data":{"content":[{"type":"text","text":"ping"}],"source":{"kind":"user"}}}],"hasMore":true}""",
+        ).setHeader("Content-Type", "application/json"))
+        val client = DshClient(server.url("/").toString(), "device-token")
+
+        val history = client.history("session-1")
+
+        assertEquals("ping", history.displayItems().single().body)
+        assertTrue(history.hasMore)
+        assertEquals("/api/v1/chat/sessions/session-1/messages", server.takeRequest().path)
     }
 
     @Test

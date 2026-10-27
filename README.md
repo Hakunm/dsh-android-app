@@ -46,7 +46,7 @@ DeepSeek-Harness-v1.0.0.apk
 
 - Android 8.0（API 26）或更高版本
 - 已运行的 DeepSeek Harness WebUI
-- DSH WebUI 已安装 `dsh-workspace` v1.0.0 或兼容版本
+- DSH WebUI 已安装 `dsh-workspace` v1.1.0，或仍在 DSH 0.1 上使用的 v1.0.0
 - 插件中至少添加了一个授权根，并已启用远程访问
 - 手机可以访问插件配置的 IP、域名和端口
 

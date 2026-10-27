@@ -68,9 +68,26 @@ data class LiveChatState(
     }
 }
 
-fun WorkspaceEvent.chatDelta(): ChatDelta? {
-    if (type != "chat.message.delta") return null
+data class AssistantStreamStart(val sessionId: String, val attemptId: String, val turn: Int, val step: Int)
+
+fun WorkspaceEvent.chatDelta(streamTurns: Map<String, Pair<Int, Int>> = emptyMap()): ChatDelta? {
     val value = data as? JsonObject ?: return null
+    if (type == "chat.message.delta") return legacyDelta(value)
+    return assistantStreamDelta(value, streamTurns)
+}
+
+fun WorkspaceEvent.assistantStreamStart(): AssistantStreamStart? {
+    val value = data as? JsonObject ?: return null
+    val frame = value.objectValue("frame") ?: value
+    if (frame.stringValue("type") != "start") return null
+    val sessionId = value.stringValue("sessionId") ?: frame.stringValue("sessionId") ?: return null
+    val attemptId = frame.stringValue("attemptId") ?: return null
+    val turn = frame.intValue("turn") ?: value.intValue("turn") ?: return null
+    val step = frame.intValue("step") ?: value.intValue("step") ?: return null
+    return AssistantStreamStart(sessionId, attemptId, turn, step)
+}
+
+private fun legacyDelta(value: JsonObject): ChatDelta? {
     val kind = when (value.stringValue("kind")) {
         "text" -> ChatItemKind.ASSISTANT
         "reasoning" -> ChatItemKind.REASONING
@@ -85,6 +102,31 @@ fun WorkspaceEvent.chatDelta(): ChatDelta? {
         text = value.stringValue("text") ?: return null,
     )
 }
+
+/** DSH 0.2 publishes token frames on `agent/assistant-stream` instead of `assistant/chunk`. */
+private fun WorkspaceEvent.assistantStreamDelta(value: JsonObject, streamTurns: Map<String, Pair<Int, Int>>): ChatDelta? {
+    val frame = value.objectValue("frame") ?: value
+    if (frame.stringValue("type") != "chunk") return null
+    val chunk = frame.objectValue("chunk") ?: return null
+    val kind = when (chunk.stringValue("type")) {
+        "text-delta" -> ChatItemKind.ASSISTANT
+        "reasoning-delta" -> ChatItemKind.REASONING
+        else -> return null
+    }
+    val sessionId = value.stringValue("sessionId") ?: frame.stringValue("sessionId") ?: return null
+    val attemptId = frame.stringValue("attemptId")
+    val located = attemptId?.let { streamTurns[streamTurnKey(sessionId, it)] }
+    return ChatDelta(
+        sessionId = sessionId,
+        turn = value.intValue("turn") ?: frame.intValue("turn") ?: located?.first ?: return null,
+        step = value.intValue("step") ?: frame.intValue("step") ?: located?.second ?: return null,
+        index = frame.intValue("index") ?: chunk.intValue("index") ?: return null,
+        kind = kind,
+        text = chunk.stringValue("text") ?: return null,
+    )
+}
+
+internal fun streamTurnKey(sessionId: String, attemptId: String): String = "$sessionId\u0000$attemptId"
 
 fun ChatHistory.displayItems(): List<ChatDisplayItem> = events.flatMap(::displayItems)
 
@@ -102,13 +144,35 @@ fun ChatHistory.permissionSelect(): PermissionSelect? {
     val values = (projections as? JsonObject)?.objectValue("values") ?: return null
     val raw = values.objectValue("permissions") ?: return null
     val currentValue = raw.stringValue("currentValue") ?: return null
-    val options = (raw["options"] as? JsonArray).orEmpty().mapNotNull { entry ->
+    val provided = (raw["options"] as? JsonArray).orEmpty().mapNotNull { entry ->
         val option = entry as? JsonObject ?: return@mapNotNull null
         val value = option.stringValue("value") ?: return@mapNotNull null
         val name = option.stringValue("name") ?: return@mapNotNull null
         PermissionOption(value, name, option.stringValue("description"))
     }
+    if (provided.isNotEmpty()) return PermissionSelect(provided, currentValue)
+    // dsh-workspace 1.1.0 forwards only currentValue. The selectable catalog is the DSH stock preset table.
+    val defaults = listOf(
+        PermissionOption("workspace-write", "workspace-write"),
+        PermissionOption("danger-full-access", "danger-full-access"),
+    )
+    val options = if (currentValue == "custom" || defaults.any { it.value == currentValue }) {
+        defaults
+    } else {
+        listOf(PermissionOption(currentValue, currentValue)) + defaults
+    }
     return PermissionSelect(options, currentValue)
+}
+
+fun ChatHistory.sessionTitle(): String? {
+    val values = (projections as? JsonObject)?.objectValue("values") ?: return null
+    val title = values["title"] ?: return null
+    val text = when (title) {
+        is JsonPrimitive -> title.contentOrNull
+        is JsonObject -> title.stringValue("title")
+        else -> null
+    }
+    return text?.takeIf(String::isNotBlank)
 }
 
 private fun displayItems(entry: HistoryEntry): List<ChatDisplayItem> = when (entry.event.type) {
@@ -140,7 +204,12 @@ private fun userItems(event: SessionEvent): List<ChatDisplayItem> {
 private fun assistantItems(event: SessionEvent): List<ChatDisplayItem> {
     val outer = event.data as? JsonObject ?: return emptyList()
     val message = outer.objectValue("message") ?: outer
-    val content = message["content"]
+    val fromContent = contentItems(event, message["content"])
+    if (fromContent.isNotEmpty()) return fromContent
+    return streamItems(event, outer["stream"] as? JsonArray)
+}
+
+private fun contentItems(event: SessionEvent, content: JsonElement?): List<ChatDisplayItem> {
     val blocks = content as? JsonArray ?: return contentText(content).takeIf(String::isNotBlank)?.let {
         listOf(ChatDisplayItem("${event.seq}-assistant", event.seq, ChatItemKind.ASSISTANT, body = it))
     }.orEmpty()
@@ -177,6 +246,42 @@ private fun assistantItems(event: SessionEvent): List<ChatDisplayItem> {
     return result
 }
 
+private fun streamItems(event: SessionEvent, stream: JsonArray?): List<ChatDisplayItem> {
+    if (stream == null) return emptyList()
+    val pieces = mutableListOf<Pair<ChatItemKind, String>>()
+    for (record in stream) {
+        val value = record as? JsonObject ?: continue
+        when (value.stringValue("type")) {
+            "text-chunks" -> joinedTexts(value)?.let { pieces += ChatItemKind.ASSISTANT to it }
+            "reasoning-chunks" -> joinedTexts(value)?.let { pieces += ChatItemKind.REASONING to it }
+            "chunk" -> {
+                val chunk = value.objectValue("chunk") ?: continue
+                val kind = when (chunk.stringValue("type")) {
+                    "text-delta" -> ChatItemKind.ASSISTANT
+                    "reasoning-delta" -> ChatItemKind.REASONING
+                    else -> null
+                } ?: continue
+                chunk.stringValue("text")?.takeIf(String::isNotBlank)?.let { pieces += kind to it }
+            }
+        }
+    }
+    val merged = mutableListOf<Pair<ChatItemKind, String>>()
+    for ((kind, text) in pieces) {
+        val last = merged.lastOrNull()
+        if (last != null && last.first == kind) merged[merged.lastIndex] = kind to "${last.second}$text"
+        else merged += kind to text
+    }
+    return merged.mapIndexed { index, (kind, text) ->
+        ChatDisplayItem("${event.seq}-stream-$index", event.seq, kind, body = text)
+    }
+}
+
+private fun joinedTexts(value: JsonObject): String? =
+    (value["texts"] as? JsonArray).orEmpty()
+        .mapNotNull { (it as? JsonPrimitive)?.contentOrNull }
+        .joinToString("")
+        .takeIf(String::isNotBlank)
+
 private fun toolItem(entry: HistoryEntry): ChatDisplayItem {
     val event = entry.event
     val data = event.data as? JsonObject
@@ -184,7 +289,11 @@ private fun toolItem(entry: HistoryEntry): ChatDisplayItem {
     val view = (entry.view as? JsonObject)?.objectValue("view")
     val viewTitle = view?.stringValue("title")
     val description = view?.stringValue("description")
-    val arguments = data?.stringValue("arguments")
+    val arguments = when (val raw = data?.get("arguments")) {
+        is JsonPrimitive -> raw.contentOrNull
+        is JsonObject -> raw.toString()
+        else -> null
+    }
     return ChatDisplayItem(
         id = "${event.seq}-tool",
         seq = event.seq,

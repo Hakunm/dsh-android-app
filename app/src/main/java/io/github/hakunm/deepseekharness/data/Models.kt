@@ -1,7 +1,22 @@
 package io.github.hakunm.deepseekharness.data
 
+import kotlinx.serialization.KSerializer
 import kotlinx.serialization.Serializable
+import kotlinx.serialization.descriptors.SerialDescriptor
+import kotlinx.serialization.descriptors.buildClassSerialDescriptor
+import kotlinx.serialization.encoding.Decoder
+import kotlinx.serialization.encoding.Encoder
+import kotlinx.serialization.json.JsonArray
+import kotlinx.serialization.json.JsonDecoder
 import kotlinx.serialization.json.JsonElement
+import kotlinx.serialization.json.JsonEncoder
+import kotlinx.serialization.json.JsonNull
+import kotlinx.serialization.json.JsonObject
+import kotlinx.serialization.json.JsonPrimitive
+import kotlinx.serialization.json.buildJsonObject
+import kotlinx.serialization.json.intOrNull
+import kotlinx.serialization.json.longOrNull
+import kotlinx.serialization.json.put
 
 @Serializable
 data class HealthView(val ok: Boolean, val version: String, val pluginVersion: String? = null)
@@ -252,7 +267,8 @@ data class SessionEvent(
     val surfaceOp: JsonElement? = null,
 )
 
-@Serializable
+/** v1 history rows are `{ event, view? }`. dsh-workspace 1.1.0 forwards bare SessionWireEvents. */
+@Serializable(with = HistoryEntrySerializer::class)
 data class HistoryEntry(val event: SessionEvent, val view: JsonElement? = null)
 
 @Serializable
@@ -274,3 +290,57 @@ class DshApiException(
     val code: String,
     override val message: String,
 ) : RuntimeException(message)
+
+/**
+ * Decodes a DSH history row in either published shape:
+ * `{ event, view? }`, a page record `{ type: "event", event }`, or a bare SessionWireEvent.
+ */
+internal object HistoryEntrySerializer : KSerializer<HistoryEntry> {
+    override val descriptor: SerialDescriptor = buildClassSerialDescriptor("HistoryEntry")
+
+    override fun serialize(encoder: Encoder, value: HistoryEntry) {
+        val jsonEncoder = encoder as? JsonEncoder ?: error("HistoryEntry requires JSON")
+        jsonEncoder.encodeJsonElement(buildJsonObject {
+            put("event", value.event.toJson())
+            value.view?.let { put("view", it) }
+        })
+    }
+
+    override fun deserialize(decoder: Decoder): HistoryEntry {
+        val jsonDecoder = decoder as? JsonDecoder ?: error("HistoryEntry requires JSON")
+        val obj = jsonDecoder.decodeJsonElement() as? JsonObject
+            ?: error("History entry must be a JSON object")
+        val nested = obj["event"] as? JsonObject
+        val eventElement = if (nested != null && nested.looksLikeSessionEvent()) nested else obj
+        return HistoryEntry(eventElement.toSessionEvent(), obj["view"])
+    }
+}
+
+private fun SessionEvent.toJson(): JsonObject = buildJsonObject {
+    put("type", type)
+    put("seq", seq)
+    put("time", time)
+    put("data", data)
+    if (sourceEventSeqs.isNotEmpty()) {
+        put("sourceEventSeqs", JsonArray(sourceEventSeqs.map { JsonPrimitive(it) }))
+    }
+    surfaceOp?.let { put("surfaceOp", it) }
+}
+
+private fun JsonObject.toSessionEvent(): SessionEvent = SessionEvent(
+    type = (this["type"] as? JsonPrimitive)?.takeIf { it.isString }?.content
+        ?: error("Session event is missing type"),
+    seq = (this["seq"] as? JsonPrimitive)?.intOrNull ?: error("Session event is missing seq"),
+    time = (this["time"] as? JsonPrimitive)?.longOrNull ?: error("Session event is missing time"),
+    data = this["data"] ?: JsonNull,
+    sourceEventSeqs = (this["sourceEventSeqs"] as? JsonArray).orEmpty().mapNotNull { (it as? JsonPrimitive)?.intOrNull },
+    surfaceOp = this["surfaceOp"],
+)
+
+private fun JsonObject.looksLikeSessionEvent(): Boolean {
+    val type = this["type"] as? JsonPrimitive ?: return false
+    if (!type.isString || type.content.isEmpty()) return false
+    if ((this["seq"] as? JsonPrimitive)?.intOrNull == null) return false
+    if ((this["time"] as? JsonPrimitive)?.longOrNull == null) return false
+    return this["data"] != null
+}

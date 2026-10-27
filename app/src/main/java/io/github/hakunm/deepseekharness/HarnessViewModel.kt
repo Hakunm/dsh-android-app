@@ -25,7 +25,10 @@ import io.github.hakunm.deepseekharness.data.SessionModels
 import io.github.hakunm.deepseekharness.data.SecureConnectionStore
 import io.github.hakunm.deepseekharness.data.TrashEntry
 import io.github.hakunm.deepseekharness.data.WorkspaceEvent
+import io.github.hakunm.deepseekharness.data.assistantStreamStart
 import io.github.hakunm.deepseekharness.data.chatDelta
+import io.github.hakunm.deepseekharness.data.sessionTitle
+import io.github.hakunm.deepseekharness.data.streamTurnKey
 import java.io.Closeable
 import java.io.InputStream
 import java.io.OutputStream
@@ -103,6 +106,7 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
     @Volatile private var chatRefreshPending = false
     @Volatile private var chatSessionRefreshPending = false
     @Volatile private var liveFinalizeTarget: LiveKey? = null
+    private val assistantTurns = mutableMapOf<String, Pair<Int, Int>>()
 
     init {
         restoreConnection()
@@ -176,7 +180,7 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
     fun refreshHistory() = withClient { api ->
         val id = mutableState.value.selectedSessionId ?: return@withClient
         val history = api.history(id)
-        update { copy(history = history) }
+        update { withSessionHistory(id, history) }
     }
 
     fun loadOlderHistory() = withClient { api ->
@@ -202,13 +206,12 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
         val commands = api.sessionCommands(created.id)
         update {
             copy(
-                sessions = sessions,
+                sessions = sessions.preservingTitles(this.sessions),
                 selectedSessionId = created.id,
-                history = history,
                 sessionModels = models,
                 commands = commands,
                 approvalState = ApprovalUiState.None,
-            )
+            ).withSessionHistory(created.id, history)
         }
     }
 
@@ -241,43 +244,45 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
         update {
             copy(
                 chatWorkspaces = workspaces,
-                sessions = sessions,
+                sessions = sessions.preservingTitles(this.sessions),
                 selectedSessionId = created.id,
-                history = api.history(created.id),
                 sessionModels = api.sessionModels(created.id),
                 commands = api.sessionCommands(created.id),
                 approvalState = ApprovalUiState.None,
-            )
+            ).withSessionHistory(created.id, api.history(created.id))
         }
     }
 
     fun renameWorkspace(workspaceId: String, title: String) = withClient { api ->
         api.renameChatWorkspace(workspaceId, title)
-        update { copy(chatWorkspaces = api.chatWorkspaces(), sessions = api.sessions()) }
+        update { copy(chatWorkspaces = api.chatWorkspaces(), sessions = api.sessions().preservingTitles(sessions)) }
     }
 
     fun deleteWorkspace(workspaceId: String) = withClient { api ->
         api.deleteChatWorkspace(workspaceId)
-        update { copy(chatWorkspaces = api.chatWorkspaces(), sessions = api.sessions()) }
+        update { copy(chatWorkspaces = api.chatWorkspaces(), sessions = api.sessions().preservingTitles(sessions)) }
     }
 
     fun renameSession(sessionId: String, title: String) = withClient { api ->
-        api.renameSession(sessionId, title)
-        update { copy(sessions = api.sessions()) }
+        val renamed = api.renameSession(sessionId, title)
+        val sessions = api.sessions().map { session ->
+            if (session.id == sessionId) session.copy(title = renamed.title) else session
+        }
+        update { copy(sessions = sessions.preservingTitles(this.sessions)) }
     }
 
     fun forkSession(sessionId: String) = withClient { api ->
         val forkedId = api.forkSession(sessionId)
+        val history = api.history(forkedId)
         update {
             copy(
-                sessions = api.sessions(),
+                sessions = api.sessions().preservingTitles(sessions),
                 selectedSessionId = forkedId,
-                history = api.history(forkedId),
                 sessionModels = api.sessionModels(forkedId),
                 commands = api.sessionCommands(forkedId),
                 approvalState = ApprovalUiState.None,
                 liveChat = null,
-            )
+            ).withSessionHistory(forkedId, history)
         }
     }
 
@@ -285,9 +290,10 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
         api.archiveSession(sessionId)
         val sessions = api.sessions()
         update {
+            val kept = sessions.preservingTitles(this.sessions)
             if (selectedSessionId == sessionId) {
                 copy(
-                    sessions = sessions,
+                    sessions = kept,
                     selectedSessionId = null,
                     history = null,
                     liveChat = null,
@@ -295,7 +301,7 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
                     commands = emptyList(),
                     approvalState = ApprovalUiState.None,
                 )
-            } else copy(sessions = sessions)
+            } else copy(sessions = kept)
         }
     }
 
@@ -308,7 +314,7 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
             if (execution.result.kind == "error") {
                 throw DshApiException(409, "COMMAND_FAILED", execution.result.text ?: "Command failed.")
             }
-            update { copy(history = api.history(id), commands = api.sessionCommands(id)) }
+            update { withSessionHistory(id, api.history(id)).copy(commands = api.sessionCommands(id)) }
             return@withClient
         }
         api.sendMessage(id, text, steer)
@@ -327,7 +333,7 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
         if (execution.result.kind == "error") {
             throw DshApiException(409, "COMMAND_FAILED", execution.result.text ?: "Permission change failed.")
         }
-        update { copy(history = api.history(id), commands = api.sessionCommands(id)) }
+        update { withSessionHistory(id, api.history(id)).copy(commands = api.sessionCommands(id)) }
     }
 
     fun refreshSessionModels() = withClient { api ->
@@ -347,7 +353,7 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
         val sessions = api.sessions()
         val models = api.sessionModels(id)
         val commands = api.sessionCommands(id)
-        update { copy(sessions = sessions, sessionModels = models, commands = commands) }
+        update { copy(sessions = sessions.preservingTitles(this.sessions), sessionModels = models, commands = commands) }
     }
 
     fun refreshProviderSettings() = withClient { api ->
@@ -413,7 +419,7 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
                 }
             }.onSuccess { (approvals, sessions) ->
                 if (mutableState.value.selectedSessionId == id) {
-                    update { copy(approvalState = approvals.toApprovalState(), sessions = sessions) }
+                    update { copy(approvalState = approvals.toApprovalState(), sessions = sessions.preservingTitles(this.sessions)) }
                     chatSessionRefreshPending = true
                     scheduleChatRefresh()
                 }
@@ -581,7 +587,10 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
         eventSubscription?.close()
         eventSubscription = api.events(
             listener = { event ->
-                val delta = event.chatDelta()
+                event.assistantStreamStart()?.let { start ->
+                    assistantTurns[streamTurnKey(start.sessionId, start.attemptId)] = start.turn to start.step
+                }
+                val delta = event.chatDelta(assistantTurns)
                 if (delta != null) {
                     if (mutableState.value.selectedSessionId == delta.sessionId) {
                         update { copy(liveChat = (liveChat ?: LiveChatState(delta.sessionId, delta.turn, delta.step)).append(delta)) }
@@ -676,7 +685,7 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
                                 val clearLive = finalizeTarget != null && liveChat?.let {
                                     it.sessionId == finalizeTarget.sessionId && it.turn == finalizeTarget.turn && it.step == finalizeTarget.step
                                 } == true
-                                copy(history = history, liveChat = if (clearLive) null else liveChat)
+                                withSessionHistory(id, history).copy(liveChat = if (clearLive) null else liveChat)
                             }
                         }
                         .onFailure { error ->
@@ -690,7 +699,7 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
                 }
                 if (refreshSessions) {
                     runCatching { withContext(Dispatchers.IO) { api.sessions() } }
-                        .onSuccess { sessions -> update { copy(sessions = sessions) } }
+                        .onSuccess { sessions -> update { copy(sessions = sessions.preservingTitles(this.sessions)) } }
                         .onFailure { error ->
                             if (error is DshApiException && error.code == "RATE_LIMITED") {
                                 chatSessionRefreshPending = true
@@ -750,6 +759,14 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
     private fun childPath(parent: String, name: String): String =
         if (parent.isBlank()) name.trim('/') else "$parent/${name.trim('/')}"
 
+    private fun HarnessState.withSessionHistory(sessionId: String, history: ChatHistory): HarnessState {
+        val title = history.sessionTitle()
+        val nextSessions = if (title.isNullOrBlank()) sessions else sessions.map { session ->
+            if (session.id == sessionId && session.title.isNullOrBlank()) session.copy(title = title) else session
+        }
+        return copy(history = history, sessions = nextSessions)
+    }
+
     private fun messageOf(error: Throwable): String = when (error) {
         is DshApiException -> "${error.code}: ${error.message}"
         else -> error.message ?: error::class.java.simpleName
@@ -758,6 +775,15 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
     private companion object {
         const val MAX_EDIT_BYTES = 2L * 1024 * 1024
         val UTF8_BOM = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
+    }
+}
+
+private fun List<ChatSession>.preservingTitles(previous: List<ChatSession>): List<ChatSession> {
+    if (previous.isEmpty()) return this
+    val titles = previous.associate { it.id to it.title }
+    return map { session ->
+        if (!session.title.isNullOrBlank()) session
+        else titles[session.id]?.takeIf { !it.isNullOrBlank() }?.let { session.copy(title = it) } ?: session
     }
 }
 
