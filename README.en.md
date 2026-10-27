@@ -46,7 +46,7 @@ Requirements:
 
 - Android 8.0 / API 26 or newer
 - A running DeepSeek Harness WebUI installation
-- `dsh-workspace` v1.0.0 or a compatible release installed in DSH WebUI
+- `dsh-workspace` v1.1.0 installed in DSH WebUI, or v1.0.0 when the server is still on DSH 0.1
 - At least one authorized root and remote access enabled in the plugin
 - Network reachability from the phone to the configured IP/domain and port
 
