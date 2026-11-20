@@ -31,7 +31,7 @@ class DshClient(
 ) {
     val endpoint: String = normalizeEndpoint(endpoint)
     private val base: HttpUrl = (this.endpoint.trimEnd('/') + "/").toHttpUrl()
-    private val json = Json { ignoreUnknownKeys = true }
+    private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
 
     fun health(): HealthView = get("healthz", HealthView.serializer(), authenticated = false)
 
@@ -53,6 +53,24 @@ class DshClient(
             .apply { if (cursor != null) addQueryParameter("cursor", cursor) }
             .build()
         return executeJson(Request.Builder().url(url).get(), DirectoryPage.serializer())
+    }
+
+    fun searchFiles(
+        rootId: String,
+        query: String,
+        path: String = "",
+        limit: Int? = null,
+        includeHidden: Boolean = false,
+    ): FileSearchResult {
+        val url = pathUrl("roots", rootId, "search").newBuilder()
+            .addQueryParameter("q", query.trim())
+            .apply {
+                if (path.isNotBlank()) addQueryParameter("path", path.trim('/'))
+                if (limit != null) addQueryParameter("limit", limit.toString())
+                if (includeHidden) addQueryParameter("includeHidden", "true")
+            }
+            .build()
+        return executeJson(Request.Builder().url(url).get(), FileSearchResult.serializer())
     }
 
     fun readFile(rootId: String, path: String): FileContent {
@@ -127,7 +145,22 @@ class DshClient(
         execute(Request.Builder().url(pathUrl("trash", id, "restore")).post(EMPTY_BODY)).use(::ensureSuccess)
     }
 
-    fun sessions(): List<ChatSession> = get("chat/sessions", SessionList.serializer()).items
+    fun sessions(includeArchived: Boolean = false): List<ChatSession> {
+        val url = pathUrl("chat", "sessions").newBuilder().apply {
+            if (includeArchived) addQueryParameter("includeArchived", "true")
+        }.build()
+        return get(url, SessionList.serializer()).items
+    }
+
+    fun searchSessions(query: String, includeArchived: Boolean = false): SessionSearchResult {
+        val url = pathUrl("chat", "sessions", "search").newBuilder()
+            .addQueryParameter("q", query.trim())
+            .apply { if (includeArchived) addQueryParameter("includeArchived", "true") }
+            .build()
+        return get(url, SessionSearchResult.serializer())
+    }
+
+    fun permissionCatalog(): PermissionCatalog = get("chat/permissions", PermissionCatalog.serializer())
 
     fun chatWorkspaces(): List<ChatWorkspace> = get("chat/workspaces", ChatWorkspaceList.serializer()).items
 
@@ -184,6 +217,13 @@ class DshClient(
         ProviderSettings.serializer(),
     )
 
+    fun removeProvider(providerId: String, expectedRevision: Int? = null) {
+        val url = pathUrl("settings", "providers", providerId).newBuilder().apply {
+            expectedRevision?.let { addQueryParameter("expectedRevision", it.toString()) }
+        }.build()
+        execute(Request.Builder().url(url).delete()).use(::ensureSuccess)
+    }
+
     fun discoverModels(providerId: String, baseURL: String?, api: String?, apiKey: String?): List<ProviderModel> = post(
         pathUrl("settings", "providers", providerId, "discover"),
         DiscoverModelsRequest(baseURL, api, apiKey),
@@ -216,6 +256,29 @@ class DshClient(
         execute(Request.Builder().url(pathUrl("chat", "sessions", sessionId, "archive")).post(EMPTY_BODY)).use(::ensureSuccess)
     }
 
+    fun unarchiveSession(sessionId: String) {
+        execute(Request.Builder().url(pathUrl("chat", "sessions", sessionId, "unarchive")).post(EMPTY_BODY)).use(::ensureSuccess)
+    }
+
+    fun pinSession(sessionId: String) {
+        execute(Request.Builder().url(pathUrl("chat", "sessions", sessionId, "pin")).post(EMPTY_BODY)).use(::ensureSuccess)
+    }
+
+    fun unpinSession(sessionId: String) {
+        execute(Request.Builder().url(pathUrl("chat", "sessions", sessionId, "pin")).delete()).use(::ensureSuccess)
+    }
+
+    fun sessionState(sessionId: String): SessionState =
+        get(pathUrl("chat", "sessions", sessionId, "state"), SessionState.serializer())
+
+    fun updateQueue(sessionId: String, itemId: String, kind: String, text: String? = null) {
+        postUnit(
+            pathUrl("chat", "sessions", sessionId, "queue", itemId),
+            QueueMutationRequest(kind, text),
+            QueueMutationRequest.serializer(),
+        )
+    }
+
     fun history(sessionId: String, beforeSeq: Int? = null, maxMessages: Int? = null): ChatHistory {
         val url = pathUrl("chat", "sessions", sessionId, "messages").newBuilder().apply {
             beforeSeq?.let { addQueryParameter("beforeSeq", it.toString()) }
@@ -235,6 +298,17 @@ class DshClient(
         )
     }
 
+    fun pendingQuestions(sessionId: String): List<PendingQuestion> =
+        get(pathUrl("chat", "sessions", sessionId, "questions"), PendingQuestionList.serializer()).items
+
+    fun answerQuestion(sessionId: String, questionId: String, answers: List<QuestionAnswerItem>) {
+        postUnit(
+            pathUrl("chat", "sessions", sessionId, "questions", questionId, "answer"),
+            AnswerQuestionRequest(answers),
+            AnswerQuestionRequest.serializer(),
+        )
+    }
+
     fun sessionCommands(sessionId: String): List<CommandDescriptor> =
         get(pathUrl("chat", "sessions", sessionId, "commands"), CommandDescriptorList.serializer()).items
 
@@ -245,10 +319,21 @@ class DshClient(
         CommandExecutionEnvelope.serializer(),
     ).execution
 
-    fun sendMessage(sessionId: String, text: String, steer: Boolean) {
+    fun sendMessage(
+        sessionId: String,
+        text: String,
+        steer: Boolean,
+        attachments: List<ImageAttachment> = emptyList(),
+    ) {
         postJsonElement(
             pathUrl("chat", "sessions", sessionId, "messages"),
-            SendMessageRequest(text, if (steer) "steer" else "queue", TimeZone.getDefault().id, UUID.randomUUID().toString()),
+            SendMessageRequest(
+                text = text,
+                mode = if (steer) "steer" else "queue",
+                clientTimeZone = TimeZone.getDefault().id,
+                clientRequestId = UUID.randomUUID().toString(),
+                attachments = attachments.takeIf { it.isNotEmpty() },
+            ),
             SendMessageRequest.serializer(),
         )
     }
@@ -277,7 +362,7 @@ class DshClient(
         responseSerializer: KSerializer<T>,
         authenticated: Boolean = true,
     ): T {
-        val requestBody = json.encodeToString(bodySerializer, body).toRequestBody(JSON_MEDIA)
+        val requestBody = wireJson.encodeToString(bodySerializer, body).toRequestBody(JSON_MEDIA)
         return executeJson(Request.Builder().url(resolve(relative)).post(requestBody), responseSerializer, authenticated)
     }
 
@@ -287,7 +372,7 @@ class DshClient(
         bodySerializer: KSerializer<B>,
         responseSerializer: KSerializer<T>,
     ): T {
-        val requestBody = json.encodeToString(bodySerializer, body).toRequestBody(JSON_MEDIA)
+        val requestBody = wireJson.encodeToString(bodySerializer, body).toRequestBody(JSON_MEDIA)
         return executeJson(Request.Builder().url(url).post(requestBody), responseSerializer)
     }
 
@@ -297,7 +382,7 @@ class DshClient(
         bodySerializer: KSerializer<B>,
         responseSerializer: KSerializer<T>,
     ): T {
-        val requestBody = json.encodeToString(bodySerializer, body).toRequestBody(JSON_MEDIA)
+        val requestBody = wireJson.encodeToString(bodySerializer, body).toRequestBody(JSON_MEDIA)
         return executeJson(Request.Builder().url(url).put(requestBody), responseSerializer)
     }
 
@@ -307,22 +392,22 @@ class DshClient(
         bodySerializer: KSerializer<B>,
         responseSerializer: KSerializer<T>,
     ): T {
-        val requestBody = json.encodeToString(bodySerializer, body).toRequestBody(JSON_MEDIA)
+        val requestBody = wireJson.encodeToString(bodySerializer, body).toRequestBody(JSON_MEDIA)
         return executeJson(Request.Builder().url(url).patch(requestBody), responseSerializer)
     }
 
     private fun <B> postJsonElement(url: HttpUrl, body: B, serializer: KSerializer<B>): JsonElement {
-        val requestBody = json.encodeToString(serializer, body).toRequestBody(JSON_MEDIA)
+        val requestBody = wireJson.encodeToString(serializer, body).toRequestBody(JSON_MEDIA)
         return executeJson(Request.Builder().url(url).post(requestBody), JsonElement.serializer())
     }
 
     private fun <B> postUnit(url: HttpUrl, body: B, serializer: KSerializer<B>) {
-        val requestBody = json.encodeToString(serializer, body).toRequestBody(JSON_MEDIA)
+        val requestBody = wireJson.encodeToString(serializer, body).toRequestBody(JSON_MEDIA)
         execute(Request.Builder().url(url).post(requestBody)).use(::ensureSuccess)
     }
 
     private fun <B> patchUnit(url: HttpUrl, body: B, serializer: KSerializer<B>) {
-        val requestBody = json.encodeToString(serializer, body).toRequestBody(JSON_MEDIA)
+        val requestBody = wireJson.encodeToString(serializer, body).toRequestBody(JSON_MEDIA)
         execute(Request.Builder().url(url).patch(requestBody)).use(::ensureSuccess)
     }
 
@@ -358,6 +443,12 @@ class DshClient(
     }.build()
 
     companion object {
+        @OptIn(kotlinx.serialization.ExperimentalSerializationApi::class)
+        private val wireJson = Json {
+            ignoreUnknownKeys = true
+            encodeDefaults = true
+            explicitNulls = false
+        }
         private val JSON_MEDIA = "application/json".toMediaType()
         private val OCTET_STREAM = "application/octet-stream".toMediaType()
         private val EMPTY_BODY = ByteArray(0).toRequestBody(OCTET_STREAM)
@@ -436,6 +527,9 @@ private class ReconnectingEvents(
 @Serializable private data class SessionList(val items: List<ChatSession>)
 @Serializable private data class PendingApprovalList(val items: List<PendingApproval>)
 @Serializable private data class ApprovalDecision(val outcome: String)
+@Serializable private data class PendingQuestionList(val items: List<PendingQuestion>)
+@Serializable private data class AnswerQuestionRequest(val answers: List<QuestionAnswerItem>)
+@Serializable private data class QueueMutationRequest(val kind: String, val text: String? = null)
 @Serializable private data class CommandDescriptorList(val items: List<CommandDescriptor>)
 @Serializable private data class CommandRequest(val line: String)
 @Serializable private data class CommandExecutionEnvelope(val execution: CommandExecution)
@@ -469,6 +563,7 @@ private class ReconnectingEvents(
     val mode: String,
     val clientTimeZone: String,
     val clientRequestId: String,
+    val attachments: List<ImageAttachment>? = null,
 )
 @Serializable private data class ErrorEnvelope(val error: ApiErrorBody)
 @Serializable private data class ApiErrorBody(val code: String, val message: String, val requestId: String? = null)

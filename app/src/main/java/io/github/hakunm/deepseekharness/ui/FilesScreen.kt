@@ -10,9 +10,6 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.calculateZoom
 import androidx.compose.foundation.horizontalScroll
-import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.text.BasicTextField
-import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -23,20 +20,31 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
-import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.text.BasicTextField
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
 import androidx.compose.material.icons.outlined.ArrowUpward
-import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.Code
+import androidx.compose.material.icons.outlined.CreateNewFolder
+import androidx.compose.material.icons.outlined.DataObject
 import androidx.compose.material.icons.outlined.DeleteOutline
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material.icons.outlined.Download
 import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FileOpen
@@ -47,8 +55,6 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.RestoreFromTrash
 import androidx.compose.material.icons.outlined.Save
 import androidx.compose.material.icons.outlined.UploadFile
-import androidx.compose.material.icons.outlined.Visibility
-import androidx.compose.material.icons.outlined.RestartAlt
 import androidx.compose.material.icons.outlined.ZoomIn
 import androidx.compose.material.icons.outlined.ZoomOut
 import androidx.compose.material3.AlertDialog
@@ -59,31 +65,32 @@ import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
-import androidx.compose.material3.OutlinedButton
-import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
-import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.TextStyle
+import androidx.compose.ui.text.font.FontFamily
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
-import kotlin.math.roundToInt
+import com.kyant.backdrop.backdrops.layerBackdrop
+import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import io.github.hakunm.deepseekharness.HarnessState
@@ -91,13 +98,35 @@ import io.github.hakunm.deepseekharness.HarnessViewModel
 import io.github.hakunm.deepseekharness.OpenDocument
 import io.github.hakunm.deepseekharness.R
 import io.github.hakunm.deepseekharness.data.FileEntry
+import io.github.hakunm.deepseekharness.ui.glass.CompactSearchPill
+import io.github.hakunm.deepseekharness.ui.glass.CrispCard
+import io.github.hakunm.deepseekharness.ui.glass.LiquidGlassFloatingBar
+import io.github.hakunm.deepseekharness.ui.glass.LiquidGlassIconButton
+import io.github.hakunm.deepseekharness.ui.glass.SquircleIconBadge
+import io.github.hakunm.deepseekharness.ui.theme.LocalGlassPalette
+import kotlin.math.roundToInt
 
 @Composable
-fun FilesScreen(state: HarnessState, viewModel: HarnessViewModel, wide: Boolean) {
+fun FilesScreen(
+    state: HarnessState,
+    viewModel: HarnessViewModel,
+    wide: Boolean,
+    bottomDockInset: Dp = 0.dp,
+    externalCreateDirectory: Boolean? = null,
+    onConsumeExternalCreate: () -> Unit = {},
+) {
     val context = LocalContext.current
     var createDirectory by remember { mutableStateOf<Boolean?>(null) }
     var moveDialog by remember { mutableStateOf(false) }
     var trashDialog by remember { mutableStateOf(false) }
+
+    LaunchedEffect(externalCreateDirectory) {
+        if (externalCreateDirectory != null) {
+            createDirectory = externalCreateDirectory
+            onConsumeExternalCreate()
+        }
+    }
+
     val uploadLauncher = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let {
             val size = displaySize(context, it)
@@ -120,28 +149,31 @@ fun FilesScreen(state: HarnessState, viewModel: HarnessViewModel, wide: Boolean)
     val download: () -> Unit = { state.document?.entry?.name?.let(downloadLauncher::launch) }
 
     if (state.roots.isEmpty()) {
-        Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Box(Modifier.fillMaxSize().statusBarsPadding(), contentAlignment = Alignment.Center) {
             EmptyState(Icons.Outlined.FolderOpen, stringResource(R.string.no_roots))
         }
         return
     }
     if (wide) {
-        Row(Modifier.fillMaxSize()) {
+        Row(
+            Modifier.fillMaxSize().padding(end = 10.dp, top = 8.dp, bottom = 8.dp),
+            horizontalArrangement = Arrangement.spacedBy(10.dp),
+        ) {
             FileBrowser(
-                state,
-                viewModel,
+                state = state,
+                viewModel = viewModel,
                 onNewFile = { createDirectory = false },
                 onNewFolder = { createDirectory = true },
                 onUpload = { uploadLauncher.launch(arrayOf("*/*")) },
                 onTrash = { viewModel.loadTrash(); trashDialog = true },
-                modifier = Modifier.width(360.dp).fillMaxHeight(),
+                bottomDockInset = bottomDockInset,
+                modifier = Modifier.width(340.dp).fillMaxHeight(),
             )
-            VerticalDivider(Modifier.fillMaxHeight(), color = MaterialTheme.colorScheme.outlineVariant)
             EditorPane(
-                state,
-                viewModel,
-                null,
-                download,
+                state = state,
+                viewModel = viewModel,
+                onBack = null,
+                onDownload = download,
                 onReplace = { replaceLauncher.launch(arrayOf("*/*")) },
                 onMove = { moveDialog = true },
                 modifier = Modifier.weight(1f).fillMaxHeight(),
@@ -149,20 +181,21 @@ fun FilesScreen(state: HarnessState, viewModel: HarnessViewModel, wide: Boolean)
         }
     } else if (state.document == null) {
         FileBrowser(
-            state,
-            viewModel,
+            state = state,
+            viewModel = viewModel,
             onNewFile = { createDirectory = false },
             onNewFolder = { createDirectory = true },
             onUpload = { uploadLauncher.launch(arrayOf("*/*")) },
             onTrash = { viewModel.loadTrash(); trashDialog = true },
-            modifier = Modifier.fillMaxSize(),
+            bottomDockInset = bottomDockInset,
+            modifier = Modifier.fillMaxSize().statusBarsPadding(),
         )
     } else {
         EditorPane(
-            state,
-            viewModel,
-            { viewModel.loadDirectory() },
-            download,
+            state = state,
+            viewModel = viewModel,
+            onBack = { viewModel.loadDirectory() },
+            onDownload = download,
             onReplace = { replaceLauncher.launch(arrayOf("*/*")) },
             onMove = { moveDialog = true },
             modifier = Modifier.fillMaxSize(),
@@ -187,33 +220,46 @@ private fun FileBrowser(
     onNewFolder: () -> Unit,
     onUpload: () -> Unit,
     onTrash: () -> Unit,
+    bottomDockInset: Dp,
     modifier: Modifier,
 ) {
     var rootMenu by remember { mutableStateOf(false) }
     var createMenu by remember { mutableStateOf(false) }
     val canWrite = "files.write" in state.device?.scopes.orEmpty()
-    Column(modifier.padding(horizontal = 12.dp)) {
-        Text(
-            stringResource(R.string.root_directory),
-            modifier = Modifier.padding(start = 4.dp, top = 12.dp, bottom = 6.dp),
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.labelMedium,
-        )
-        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
-            Box(Modifier.weight(1f)) {
-                OutlinedButton(
-                    onClick = { rootMenu = true },
-                    modifier = Modifier.fillMaxWidth(),
-                    shape = MaterialTheme.shapes.medium,
+    val palette = LocalGlassPalette.current
+    val fileSearchResults = state.fileSearchResults
+    val searchActive = fileSearchResults != null
+
+    Column(
+        modifier.padding(horizontal = 12.dp),
+        verticalArrangement = Arrangement.spacedBy(8.dp),
+    ) {
+        // Compact Single-Row Top Bar: Root pill + Inline Search Capsule + Compact Action Icons
+        Row(
+            Modifier.fillMaxWidth().padding(top = 6.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(5.dp),
+        ) {
+            Box {
+                Row(
+                    modifier = Modifier
+                        .height(36.dp)
+                        .clip(CircleShape)
+                        .background(palette.cardBackground, CircleShape)
+                        .clickable { rootMenu = true }
+                        .padding(horizontal = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
-                    Icon(Icons.Outlined.FolderOpen, null)
+                    Icon(Icons.Outlined.FolderOpen, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.primary)
                     Text(
                         state.roots.find { it.id == state.selectedRootId }?.label.orEmpty(),
-                        modifier = Modifier.weight(1f).padding(start = 8.dp),
+                        modifier = Modifier.widthIn(max = 84.dp),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
+                        style = MaterialTheme.typography.labelMedium,
                     )
-                    Icon(Icons.Outlined.ExpandMore, null)
+                    Icon(Icons.Outlined.ExpandMore, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
                 DropdownMenu(expanded = rootMenu, onDismissRequest = { rootMenu = false }) {
                     state.roots.forEach { root ->
@@ -224,74 +270,141 @@ private fun FileBrowser(
                     }
                 }
             }
-            IconButton(onClick = { viewModel.loadDirectory() }) {
-                Icon(Icons.Outlined.Refresh, stringResource(R.string.refresh))
+
+            CompactSearchPill(
+                query = state.fileSearchQuery,
+                onQueryChange = viewModel::setFileSearchQuery,
+                onSearch = { viewModel.searchFiles() },
+                onClear = viewModel::clearFileSearch,
+                placeholder = stringResource(R.string.search_files_hint),
+                searching = state.searchingFiles,
+                clearContentDescription = stringResource(R.string.clear_search),
+                modifier = Modifier.weight(1f),
+            )
+
+            Box {
+                IconButton(onClick = { createMenu = true }, enabled = canWrite, modifier = Modifier.size(32.dp)) {
+                    Icon(Icons.Outlined.CreateNewFolder, stringResource(R.string.create), Modifier.size(19.dp))
+                }
+                DropdownMenu(expanded = createMenu, onDismissRequest = { createMenu = false }) {
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.new_file)) },
+                        leadingIcon = { Icon(Icons.AutoMirrored.Outlined.InsertDriveFile, null) },
+                        onClick = { createMenu = false; onNewFile() },
+                    )
+                    DropdownMenuItem(
+                        text = { Text(stringResource(R.string.new_folder)) },
+                        leadingIcon = { Icon(Icons.Outlined.Folder, null) },
+                        onClick = { createMenu = false; onNewFolder() },
+                    )
+                }
+            }
+            IconButton(onClick = onUpload, enabled = canWrite, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Outlined.UploadFile, stringResource(R.string.upload), Modifier.size(19.dp))
+            }
+            IconButton(onClick = onTrash, modifier = Modifier.size(32.dp)) {
+                Icon(Icons.Outlined.RestoreFromTrash, stringResource(R.string.trash), Modifier.size(19.dp))
             }
         }
 
-        Surface(
-            modifier = Modifier.fillMaxWidth().padding(top = 10.dp),
-            shape = MaterialTheme.shapes.small,
-            color = MaterialTheme.colorScheme.surfaceVariant,
-        ) {
+        // Sleek Breadcrumb / Search Header Bar
+        if (fileSearchResults == null) {
             Row(
-                Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                Modifier.fillMaxWidth().height(30.dp).padding(horizontal = 2.dp),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
             ) {
                 IconButton(
                     onClick = { viewModel.loadDirectory(state.currentPath.substringBeforeLast('/', "")) },
                     enabled = state.currentPath.isNotEmpty(),
+                    modifier = Modifier.size(28.dp),
                 ) {
-                    Icon(Icons.Outlined.ArrowUpward, stringResource(R.string.go_up))
+                    Icon(Icons.Outlined.ArrowUpward, stringResource(R.string.go_up), Modifier.size(16.dp))
                 }
                 Text(
                     "/${state.currentPath}",
                     modifier = Modifier.weight(1f),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
                 )
-                Box {
-                    IconButton(onClick = { createMenu = true }, enabled = canWrite) {
-                        Icon(Icons.Outlined.CreateNewFolder, stringResource(R.string.create))
-                    }
-                    DropdownMenu(expanded = createMenu, onDismissRequest = { createMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.new_file)) },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Outlined.InsertDriveFile, null) },
-                            onClick = { createMenu = false; onNewFile() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.new_folder)) },
-                            leadingIcon = { Icon(Icons.Outlined.Folder, null) },
-                            onClick = { createMenu = false; onNewFolder() },
+                IconButton(onClick = { viewModel.loadDirectory() }, modifier = Modifier.size(28.dp)) {
+                    Icon(
+                        Icons.Outlined.Refresh,
+                        stringResource(R.string.refresh),
+                        Modifier.size(16.dp),
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                    )
+                }
+            }
+        } else {
+            Row(
+                Modifier.fillMaxWidth().padding(horizontal = 4.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.SpaceBetween,
+            ) {
+                Column(Modifier.weight(1f)) {
+                    Text(
+                        stringResource(R.string.search_results_count, fileSearchResults.entries.size),
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
+                    if (fileSearchResults.truncated) {
+                        Text(
+                            stringResource(R.string.search_truncated),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
-                IconButton(onClick = onUpload, enabled = canWrite) {
-                    Icon(Icons.Outlined.UploadFile, stringResource(R.string.upload))
-                }
-                IconButton(onClick = onTrash) {
-                    Icon(Icons.Outlined.RestoreFromTrash, stringResource(R.string.trash))
+                TextButton(onClick = viewModel::clearFileSearch, contentPadding = PaddingValues(horizontal = 8.dp)) {
+                    Text(stringResource(R.string.clear_search), style = MaterialTheme.typography.labelMedium)
                 }
             }
         }
 
-        val entries = state.directory?.entries.orEmpty()
+        val entries = fileSearchResults?.entries ?: state.directory?.entries.orEmpty()
+
         if (entries.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
-                EmptyState(Icons.Outlined.FolderOpen, stringResource(R.string.empty_directory))
+                EmptyState(
+                    Icons.Outlined.FolderOpen,
+                    stringResource(if (searchActive) R.string.no_search_results else R.string.empty_directory),
+                )
             }
         } else {
             LazyColumn(
                 Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(vertical = 8.dp),
+                contentPadding = PaddingValues(bottom = bottomDockInset + 14.dp),
             ) {
-                items(entries, key = { it.path }) { entry -> FileRow(entry, viewModel) }
-                if (state.directory?.nextCursor != null) {
-                    item {
-                        TextButton(onClick = viewModel::loadNextDirectoryPage, modifier = Modifier.fillMaxWidth()) {
-                            Text(stringResource(R.string.load_more))
+                item("file-list-card") {
+                    CrispCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        cornerRadius = 16.dp,
+                        contentPadding = PaddingValues(0.dp),
+                    ) {
+                        Column(Modifier.fillMaxWidth()) {
+                            entries.forEachIndexed { index, entry ->
+                                FileCompactRow(
+                                    entry = entry,
+                                    showRelativePath = searchActive,
+                                    onOpen = { viewModel.openEntry(entry) },
+                                    onAction = { viewModel.selectEntryForAction(entry) },
+                                )
+                                if (index != entries.lastIndex) {
+                                    HorizontalDivider(Modifier.padding(start = 56.dp), color = palette.divider)
+                                }
+                            }
+                        }
+                    }
+                }
+                if (!searchActive && state.directory?.nextCursor != null) {
+                    item("load-more-files") {
+                        Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                            TextButton(onClick = viewModel::loadNextDirectoryPage) {
+                                Text(stringResource(R.string.load_more))
+                            }
                         }
                     }
                 }
@@ -301,48 +414,56 @@ private fun FileBrowser(
 }
 
 @Composable
-private fun FileRow(entry: FileEntry, viewModel: HarnessViewModel) {
-    val kindLabel = if (entry.kind == "directory") {
-        stringResource(R.string.file_kind_directory)
-    } else {
-        stringResource(R.string.file_kind_file)
+private fun FileCompactRow(
+    entry: FileEntry,
+    showRelativePath: Boolean,
+    onOpen: () -> Unit,
+    onAction: () -> Unit,
+) {
+    val palette = LocalGlassPalette.current
+    val isDir = entry.kind == "directory"
+    val ext = entry.name.substringAfterLast('.', "").lowercase()
+    val (icon, c1, c2) = when {
+        isDir -> Triple(Icons.Outlined.Folder, palette.accentBlue, palette.accentCyan)
+        ext in setOf("md", "markdown", "txt") -> Triple(Icons.Outlined.Description, palette.accentIndigo, palette.accentBlue)
+        ext in setOf("ts", "tsx", "js", "jsx", "kt", "java", "py", "rs", "go") -> Triple(Icons.Outlined.Code, palette.accentCyan, palette.accentEmerald)
+        ext in setOf("json", "yaml", "yml", "toml", "xml") -> Triple(Icons.Outlined.DataObject, palette.accentAmber, palette.accentCoral)
+        else -> Triple(Icons.AutoMirrored.Outlined.InsertDriveFile, MaterialTheme.colorScheme.outline, MaterialTheme.colorScheme.outline)
+    }
+    val kindLabel = stringResource(if (isDir) R.string.file_kind_directory else R.string.file_kind_file)
+    val subtitle = when {
+        showRelativePath && !isDir -> "${entry.path} · ${formatBytes(entry.size)}"
+        showRelativePath -> entry.path
+        isDir -> kindLabel
+        else -> "$kindLabel · ${formatBytes(entry.size)}"
     }
     Row(
-        Modifier
+        modifier = Modifier
             .fillMaxWidth()
-            .clickable { viewModel.openEntry(entry) }
-            .padding(horizontal = 4.dp, vertical = 9.dp),
+            .clickable(onClick = onOpen)
+            .padding(horizontal = 12.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        Box(
-            Modifier
-                .size(40.dp)
-                .background(MaterialTheme.colorScheme.surfaceVariant, MaterialTheme.shapes.small),
-            contentAlignment = Alignment.Center,
-        ) {
-            Icon(
-                if (entry.kind == "directory") Icons.Outlined.Folder else Icons.AutoMirrored.Outlined.InsertDriveFile,
-                null,
-                modifier = Modifier.size(21.dp),
-                tint = if (entry.kind == "directory") MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-            )
-        }
-        Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
-            Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.bodyMedium)
+        SquircleIconBadge(icon = icon, startColor = c1, endColor = c2, size = 34.dp, iconSize = 18.dp, cornerRadius = 10.dp)
+        Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
+            Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
             Text(
-                if (entry.kind == "directory") kindLabel else "$kindLabel · ${formatBytes(entry.size)}",
+                subtitle,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
-        IconButton(onClick = { viewModel.selectEntryForAction(entry) }) {
-            Icon(Icons.Outlined.MoreVert, stringResource(R.string.file_actions))
+        IconButton(onClick = onAction, modifier = Modifier.size(30.dp)) {
+            Icon(
+                Icons.Outlined.MoreVert,
+                stringResource(R.string.file_actions),
+                Modifier.size(17.dp),
+                tint = MaterialTheme.colorScheme.onSurfaceVariant,
+            )
         }
     }
-    HorizontalDivider(
-        modifier = Modifier.padding(start = 56.dp),
-        color = MaterialTheme.colorScheme.outlineVariant,
-    )
 }
 
 @Composable
@@ -369,150 +490,200 @@ private fun EditorPane(
     val applyZoom: (Float) -> Unit = { factor ->
         textScale = (textScale * factor).coerceIn(MIN_TEXT_SCALE, MAX_TEXT_SCALE)
     }
-    Column(modifier) {
-        Row(
-            Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
+    val palette = LocalGlassPalette.current
+    val editorBackdrop = rememberLayerBackdrop()
+
+    Box(modifier.imePadding()) {
+        // Layer 1: Full-bleed crisp document content captured into editorBackdrop
+        Box(
+            Modifier
+                .fillMaxSize()
+                .background(palette.cardBackground)
+                .layerBackdrop(editorBackdrop),
         ) {
-            if (onBack != null) {
-                IconButton(onClick = onBack) {
-                    Icon(Icons.AutoMirrored.Outlined.ArrowBack, stringResource(R.string.back))
+            when {
+                document.text == null -> {
+                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                        EmptyState(
+                            Icons.AutoMirrored.Outlined.InsertDriveFile,
+                            if (document.entry.kind == "directory") document.entry.kind else stringResource(R.string.binary_file),
+                        )
+                    }
                 }
-            }
-            Column(Modifier.weight(1f).padding(start = if (onBack == null) 8.dp else 0.dp)) {
-                Text(
-                    document.entry.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-                Text(
-                    document.entry.path,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                )
-            }
-            if (markdown && document.text != null) {
-                IconButton(onClick = { markdownPreview = false }) {
-                    Icon(
-                        Icons.Outlined.Code,
-                        stringResource(R.string.markdown_source),
-                        tint = if (!markdownPreview) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
+                markdown && markdownPreview -> {
+                    Column(
+                        Modifier
+                            .fillMaxSize()
+                            .statusBarsPadding()
+                            .navigationBarsPadding()
+                            .pinchToZoom(document.entry.path, applyZoom)
+                            .verticalScroll(rememberScrollState())
+                            .padding(start = 16.dp, end = 16.dp, top = 66.dp, bottom = 74.dp),
+                    ) {
+                        Markdown(
+                            content = document.text,
+                            typography = fileMarkdownTypography(textScale),
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                    }
                 }
-                IconButton(onClick = { markdownPreview = true }) {
-                    Icon(
-                        Icons.Outlined.Visibility,
-                        stringResource(R.string.markdown_preview),
-                        tint = if (markdownPreview) MaterialTheme.colorScheme.primary
-                        else MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-            IconButton(
-                onClick = viewModel::saveDocument,
-                enabled = document.text != null && document.entry.writable &&
-                    "files.write" in state.device?.scopes.orEmpty(),
-            ) {
-                Icon(Icons.Outlined.Save, stringResource(R.string.save))
-            }
-            Box {
-                IconButton(onClick = { actionsExpanded = true }) {
-                    Icon(Icons.Outlined.MoreVert, stringResource(R.string.file_actions))
-                }
-                DropdownMenu(expanded = actionsExpanded, onDismissRequest = { actionsExpanded = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.download)) },
-                        leadingIcon = { Icon(Icons.Outlined.Download, null) },
-                        enabled = document.entry.kind == "file",
-                        onClick = { actionsExpanded = false; onDownload() },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.replace_file)) },
-                        leadingIcon = { Icon(Icons.Outlined.FileOpen, null) },
-                        enabled = document.entry.kind == "file" && "files.write" in state.device?.scopes.orEmpty(),
-                        onClick = { actionsExpanded = false; onReplace() },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.rename_move)) },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Outlined.DriveFileMove, null) },
-                        enabled = "files.write" in state.device?.scopes.orEmpty(),
-                        onClick = { actionsExpanded = false; onMove() },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.move_to_trash)) },
-                        leadingIcon = {
-                            Icon(Icons.Outlined.DeleteOutline, null, tint = MaterialTheme.colorScheme.error)
-                        },
-                        enabled = "files.delete" in state.device?.scopes.orEmpty(),
-                        onClick = { actionsExpanded = false; viewModel.trashSelected() },
+                else -> {
+                    NumberedTextEditor(
+                        value = document.text,
+                        onValueChange = viewModel::updateDocument,
+                        scale = textScale,
+                        topInset = 64.dp,
+                        modifier = Modifier
+                            .fillMaxSize()
+                            .statusBarsPadding()
+                            .navigationBarsPadding()
+                            .pinchToZoom(document.entry.path, applyZoom),
                     )
                 }
             }
         }
-        if (document.text != null) {
+
+        // Layer 2: Compact Floating Crystal Liquid Glass Header Bar (real refraction over scrolled code/Markdown!)
+        LiquidGlassFloatingBar(
+            modifier = Modifier
+                .align(Alignment.TopCenter)
+                .fillMaxWidth()
+                .statusBarsPadding()
+                .padding(horizontal = 10.dp, vertical = 6.dp),
+            capsule = true,
+            backdrop = editorBackdrop,
+            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 5.dp),
+        ) {
             Row(
-                Modifier.fillMaxWidth().height(48.dp).padding(horizontal = 8.dp),
+                Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
             ) {
-                Spacer(Modifier.weight(1f))
-                IconButton(
-                    onClick = { textScale = (textScale - TEXT_SCALE_STEP).coerceAtLeast(MIN_TEXT_SCALE) },
-                    enabled = textScale > MIN_TEXT_SCALE,
-                ) {
-                    Icon(Icons.Outlined.ZoomOut, stringResource(R.string.zoom_out))
+                if (onBack != null) {
+                    LiquidGlassIconButton(
+                        onClick = onBack,
+                        icon = Icons.AutoMirrored.Outlined.ArrowBack,
+                        contentDescription = stringResource(R.string.back),
+                        backdrop = editorBackdrop,
+                        size = 32.dp,
+                        iconSize = 17.dp,
+                    )
                 }
-                Text(
-                    "${(textScale * 100).roundToInt()}%",
-                    modifier = Modifier.width(56.dp),
-                    textAlign = TextAlign.Center,
-                    style = MaterialTheme.typography.labelLarge,
+                Column(Modifier.weight(1f).padding(horizontal = 3.dp)) {
+                    Text(
+                        document.entry.name,
+                        style = MaterialTheme.typography.titleSmall,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                    Text(
+                        document.entry.path,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis,
+                    )
+                }
+                if (markdown && document.text != null) {
+                    Row(
+                        modifier = Modifier
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f), CircleShape)
+                            .clickable { markdownPreview = !markdownPreview }
+                            .padding(horizontal = 9.dp, vertical = 5.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        Text(
+                            stringResource(if (markdownPreview) R.string.markdown_source else R.string.markdown_preview),
+                            color = MaterialTheme.colorScheme.primary,
+                            style = MaterialTheme.typography.labelSmall,
+                        )
+                    }
+                }
+                LiquidGlassIconButton(
+                    onClick = viewModel::saveDocument,
+                    icon = Icons.Outlined.Save,
+                    contentDescription = stringResource(R.string.save),
+                    enabled = document.text != null && document.entry.writable &&
+                        "files.write" in state.device?.scopes.orEmpty(),
+                    backdrop = editorBackdrop,
+                    tint = if (document.text != null && document.entry.writable) MaterialTheme.colorScheme.primary else Color.Unspecified,
+                    size = 32.dp,
+                    iconSize = 16.dp,
                 )
-                IconButton(
-                    onClick = { textScale = 1f },
-                    enabled = textScale != 1f,
-                ) {
-                    Icon(Icons.Outlined.RestartAlt, stringResource(R.string.reset_zoom))
-                }
-                IconButton(
-                    onClick = { textScale = (textScale + TEXT_SCALE_STEP).coerceAtMost(MAX_TEXT_SCALE) },
-                    enabled = textScale < MAX_TEXT_SCALE,
-                ) {
-                    Icon(Icons.Outlined.ZoomIn, stringResource(R.string.zoom_in))
+                Box {
+                    LiquidGlassIconButton(
+                        onClick = { actionsExpanded = true },
+                        icon = Icons.Outlined.MoreVert,
+                        contentDescription = stringResource(R.string.file_actions),
+                        backdrop = editorBackdrop,
+                        size = 32.dp,
+                        iconSize = 17.dp,
+                    )
+                    DropdownMenu(expanded = actionsExpanded, onDismissRequest = { actionsExpanded = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.download)) },
+                            leadingIcon = { Icon(Icons.Outlined.Download, null) },
+                            enabled = document.entry.kind == "file",
+                            onClick = { actionsExpanded = false; onDownload() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.replace_file)) },
+                            leadingIcon = { Icon(Icons.Outlined.FileOpen, null) },
+                            enabled = document.entry.kind == "file" && "files.write" in state.device?.scopes.orEmpty(),
+                            onClick = { actionsExpanded = false; onReplace() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.rename_move)) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Outlined.DriveFileMove, null) },
+                            enabled = "files.write" in state.device?.scopes.orEmpty(),
+                            onClick = { actionsExpanded = false; onMove() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.move_to_trash)) },
+                            leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) },
+                            enabled = "files.delete" in state.device?.scopes.orEmpty(),
+                            onClick = { actionsExpanded = false; viewModel.trashSelected() },
+                        )
+                    }
                 }
             }
         }
-        HorizontalDivider(color = MaterialTheme.colorScheme.outlineVariant)
-        if (document.text == null) {
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                EmptyState(
-                    Icons.AutoMirrored.Outlined.InsertDriveFile,
-                    if (document.entry.kind == "directory") document.entry.kind else stringResource(R.string.binary_file),
-                )
-            }
-        } else if (markdown && markdownPreview) {
-            Column(
-                Modifier.fillMaxSize()
-                    .pinchToZoom(document.entry.path, applyZoom)
-                    .verticalScroll(rememberScrollState())
-                    .padding(horizontal = 18.dp, vertical = 14.dp),
+
+        // Layer 3: Compact Floating Crystal Liquid Glass Zoom Capsule in Bottom-Right!
+        if (document.text != null) {
+            LiquidGlassFloatingBar(
+                modifier = Modifier
+                    .align(Alignment.BottomEnd)
+                    .navigationBarsPadding()
+                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                capsule = true,
+                backdrop = editorBackdrop,
+                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 3.dp),
             ) {
-                Markdown(
-                    content = document.text,
-                    typography = fileMarkdownTypography(textScale),
-                    modifier = Modifier.fillMaxWidth(),
-                )
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                    IconButton(
+                        onClick = { textScale = (textScale - TEXT_SCALE_STEP).coerceAtLeast(MIN_TEXT_SCALE) },
+                        enabled = textScale > MIN_TEXT_SCALE,
+                        modifier = Modifier.size(30.dp),
+                    ) {
+                        Icon(Icons.Outlined.ZoomOut, stringResource(R.string.zoom_out), Modifier.size(16.dp))
+                    }
+                    Text(
+                        "${(textScale * 100).roundToInt()}%",
+                        modifier = Modifier.width(40.dp).clickable(enabled = textScale != 1f) { textScale = 1f },
+                        textAlign = TextAlign.Center,
+                        style = MaterialTheme.typography.labelSmall,
+                    )
+                    IconButton(
+                        onClick = { textScale = (textScale + TEXT_SCALE_STEP).coerceAtMost(MAX_TEXT_SCALE) },
+                        enabled = textScale < MAX_TEXT_SCALE,
+                        modifier = Modifier.size(30.dp),
+                    ) {
+                        Icon(Icons.Outlined.ZoomIn, stringResource(R.string.zoom_in), Modifier.size(16.dp))
+                    }
+                }
             }
-        } else {
-            NumberedTextEditor(
-                value = document.text,
-                onValueChange = viewModel::updateDocument,
-                scale = textScale,
-                modifier = Modifier.fillMaxSize().pinchToZoom(document.entry.path, applyZoom),
-            )
         }
     }
 }
@@ -522,28 +693,33 @@ private fun NumberedTextEditor(
     value: String,
     onValueChange: (String) -> Unit,
     scale: Float,
+    topInset: Dp,
     modifier: Modifier = Modifier,
 ) {
     val vertical = rememberScrollState()
     val horizontal = rememberScrollState()
     val lineCount = value.count { it == '\n' } + 1
     val digits = lineCount.toString().length
-    val gutterWidth = (digits * 9 * scale + 22).dp
+    val gutterWidth = (digits * 8 * scale + 22).dp
     val codeStyle = scaledTextStyle(
-        MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace),
+        MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
         scale,
     )
-    Row(modifier.background(MaterialTheme.colorScheme.surface)) {
+    Row(modifier) {
         Box(
-            Modifier.width(gutterWidth).fillMaxHeight()
-                .background(MaterialTheme.colorScheme.surfaceContainer)
+            Modifier
+                .width(gutterWidth)
+                .fillMaxHeight()
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.035f))
                 .clipToBounds(),
         ) {
             Text(
                 text = (1..lineCount).joinToString("\n"),
-                modifier = Modifier.fillMaxWidth().offset { IntOffset(0, -vertical.value) }
-                    .padding(top = 12.dp, end = 8.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .offset { IntOffset(0, -vertical.value) }
+                    .padding(top = topInset, end = 8.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
                 textAlign = TextAlign.End,
                 style = codeStyle,
             )
@@ -551,9 +727,12 @@ private fun NumberedTextEditor(
         BasicTextField(
             value = value,
             onValueChange = onValueChange,
-            modifier = Modifier.weight(1f).fillMaxHeight()
-                .horizontalScroll(horizontal).verticalScroll(vertical)
-                .padding(horizontal = 12.dp, vertical = 12.dp),
+            modifier = Modifier
+                .weight(1f)
+                .fillMaxHeight()
+                .horizontalScroll(horizontal)
+                .verticalScroll(vertical)
+                .padding(start = 10.dp, end = 12.dp, top = topInset, bottom = 74.dp),
             textStyle = codeStyle.copy(color = MaterialTheme.colorScheme.onSurface),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         )
@@ -570,7 +749,7 @@ private fun fileMarkdownTypography(scale: Float) = markdownTypography(
     h6 = scaledTextStyle(MaterialTheme.typography.titleSmall, scale),
     text = scaledTextStyle(MaterialTheme.typography.bodyMedium, scale),
     code = scaledTextStyle(MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace), scale),
-    inlineCode = scaledTextStyle(MaterialTheme.typography.bodyMedium.copy(fontFamily = FontFamily.Monospace), scale),
+    inlineCode = scaledTextStyle(MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace), scale),
     quote = scaledTextStyle(MaterialTheme.typography.bodyMedium, scale),
     paragraph = scaledTextStyle(MaterialTheme.typography.bodyMedium, scale),
     ordered = scaledTextStyle(MaterialTheme.typography.bodyMedium, scale),
@@ -610,20 +789,9 @@ private fun NewEntryDialog(directory: Boolean, onClose: () -> Unit, onCreate: (S
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text(stringResource(if (directory) R.string.new_folder else R.string.new_file)) },
-        text = {
-            OutlinedTextField(
-                name,
-                { name = it },
-                label = { Text(stringResource(R.string.file_name)) },
-                singleLine = true,
-            )
-        },
+        text = { GlassOutlinedField(name, { name = it }, stringResource(R.string.file_name)) },
         confirmButton = {
-            Button(
-                onClick = { onCreate(name) },
-                enabled = name.isNotBlank(),
-                shape = MaterialTheme.shapes.medium,
-            ) {
+            Button(onClick = { onCreate(name) }, enabled = name.isNotBlank(), shape = CircleShape) {
                 Text(stringResource(R.string.create))
             }
         },
@@ -637,20 +805,11 @@ private fun MoveDialog(document: OpenDocument?, viewModel: HarnessViewModel, onC
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text(stringResource(R.string.rename_move)) },
-        text = {
-            OutlinedTextField(
-                destination,
-                { destination = it },
-                label = { Text(stringResource(R.string.destination_path)) },
-                modifier = Modifier.fillMaxWidth(),
-            )
-        },
+        text = { GlassOutlinedField(destination, { destination = it }, stringResource(R.string.destination_path)) },
         confirmButton = {
-            Button(
-                onClick = { viewModel.moveSelected(destination); onClose() },
-                enabled = destination.isNotBlank(),
-                shape = MaterialTheme.shapes.medium,
-            ) { Text(stringResource(R.string.confirm)) }
+            Button(onClick = { viewModel.moveSelected(destination); onClose() }, enabled = destination.isNotBlank(), shape = CircleShape) {
+                Text(stringResource(R.string.confirm))
+            }
         },
         dismissButton = { TextButton(onClick = onClose) { Text(stringResource(R.string.close)) } },
     )
@@ -658,6 +817,7 @@ private fun MoveDialog(document: OpenDocument?, viewModel: HarnessViewModel, onC
 
 @Composable
 private fun TrashDialog(state: HarnessState, viewModel: HarnessViewModel, onClose: () -> Unit) {
+    val palette = LocalGlassPalette.current
     AlertDialog(
         onDismissRequest = onClose,
         title = { Text(stringResource(R.string.trash)) },
@@ -665,22 +825,22 @@ private fun TrashDialog(state: HarnessState, viewModel: HarnessViewModel, onClos
             if (state.trash.isEmpty()) {
                 Text(stringResource(R.string.no_trash))
             } else {
-                LazyColumn(Modifier.fillMaxWidth().height(360.dp)) {
+                LazyColumn(Modifier.fillMaxWidth().height(320.dp)) {
                     items(state.trash, key = { it.id }) { item ->
-                        Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 item.path,
                                 modifier = Modifier.weight(1f),
                                 maxLines = 2,
                                 overflow = TextOverflow.Ellipsis,
+                                style = MaterialTheme.typography.bodySmall,
                             )
                             IconButton(
                                 onClick = { viewModel.restoreTrash(item.id) },
                                 enabled = "files.delete" in state.device?.scopes.orEmpty(),
-                            ) {
-                                Icon(Icons.Outlined.RestoreFromTrash, stringResource(R.string.restore))
-                            }
+                            ) { Icon(Icons.Outlined.RestoreFromTrash, stringResource(R.string.restore)) }
                         }
+                        HorizontalDivider(color = palette.divider)
                     }
                 }
             }

@@ -63,7 +63,36 @@ class ChatPresentationTest {
     }
 
     @Test
-    fun foldsStableWebSocketDeltasIntoAReadableLiveAssistantMessage() {
+    fun parsesDsh02xStreamAssistantChunksObjectToolArgumentsAndUserImages() {
+        val raw = """
+            {
+              "events": [
+                {"type":"user/message","seq":1,"time":1,"data":{"content":[{"type":"text","text":"Look at this"},{"type":"image","mediaType":"image/png","data":"AA==","name":"mock.png"}],"source":{"kind":"user"}}},
+                {"type":"assistant/message","seq":2,"time":2,"data":{"turn":1,"step":1,"stream":[{"type":"reasoning-chunks","chunks":["Plan ","step 1"]},{"type":"text-chunks","chunks":["Hello ","world"]}]}},
+                {"type":"tool/call","seq":3,"time":3,"data":{"name":"read","arguments":{"file_path":"src/App.kt"}}}
+              ],
+              "hasMore": false,
+              "projections": {"values":{"title":{"title":"Liquid Glass Redesign"}}}
+            }
+        """.trimIndent()
+
+        val history = json.decodeFromString(ChatHistory.serializer(), raw)
+        val items = history.displayItems()
+
+        assertEquals("Liquid Glass Redesign", history.sessionTitle())
+        assertEquals(
+            listOf(ChatItemKind.USER, ChatItemKind.REASONING, ChatItemKind.ASSISTANT, ChatItemKind.TOOL),
+            items.map { it.kind },
+        )
+        assertEquals("Look at this\n\n[Image: mock.png]", items[0].body)
+        assertEquals("Plan step 1", items[1].body)
+        assertEquals("Hello world", items[2].body)
+        assertEquals("Read", items[3].title)
+        assertEquals("src/App.kt", items[3].body)
+    }
+
+    @Test
+    fun foldsStableWebSocketDeltasAndAssistantStreamFrames() {
         val first = WorkspaceEvent(
             "1",
             "chat.message.delta",
@@ -86,24 +115,53 @@ class ChatPresentationTest {
         assertEquals("实时输出", live.displayItems().single().body)
         assertEquals(ChatItemKind.ASSISTANT, live.displayItems().single().kind)
         assertEquals(2, live.revision)
+
+        val streamStart = WorkspaceEvent(
+            "3",
+            "chat.agent.assistant-stream",
+            3,
+            json.parseToJsonElement("""{"sessionId":"session-2","phase":"start","turn":4}"""),
+        ).assistantStreamStart()
+        assertEquals("session-2" to 4, streamStart)
+
+        val streamChunk = WorkspaceEvent(
+            "4",
+            "chat.agent.assistant-stream",
+            4,
+            json.parseToJsonElement("""{"sessionId":"session-2","phase":"chunk","chunk":{"type":"text-delta","delta":"Chunked"}}"""),
+        ).chatDelta(mapOf("session-2" to 4))!!
+        assertEquals(4, streamChunk.turn)
+        assertEquals("Chunked", streamChunk.text)
     }
 
     @Test
-    fun readsTodoAndPermissionControlsFromSessionProjections() {
+    fun readsTodoPermissionFallbackAndPreservesSessionTitles() {
+        val catalog = PermissionCatalog(
+            options = listOf(
+                PermissionOption("read-only", "Read Only"),
+                PermissionOption("workspace-write", "Workspace Write", "Write inside the workspace"),
+            ),
+            defaultPreset = "workspace-write",
+        )
         val history = ChatHistory(
             events = emptyList(),
             hasMore = false,
             projections = json.parseToJsonElement(
-                """{"values":{"todos":[{"content":"Inspect API","status":"completed"},{"content":"Build UI","status":"in_progress"}],"permissions":{"currentValue":"workspace-write","options":[{"value":"read-only","name":"Read Only"},{"value":"workspace-write","name":"Workspace Write","description":"Write inside the workspace"},{"value":"danger-full-access","name":"Full access"}]}}}""",
+                """{"values":{"title":"Release v1.2.0","todos":[{"content":"Inspect API","status":"completed"},{"content":"Build UI","status":"in_progress"}],"permissions":"read-only"}}""",
             ),
         )
 
         assertEquals(listOf("Inspect API", "Build UI"), history.todoItems().map(TodoItem::content))
         assertEquals(listOf("completed", "in_progress"), history.todoItems().map(TodoItem::status))
-        val permissions = history.permissionSelect()!!
-        assertEquals("workspace-write", permissions.currentValue)
-        assertEquals(listOf("read-only", "workspace-write", "danger-full-access"), permissions.options.map(PermissionOption::value))
-        assertEquals("Write inside the workspace", permissions.options[1].description)
+        val permissions = history.permissionSelect(catalog)!!
+        assertEquals("read-only", permissions.currentValue)
+        assertEquals(2, permissions.options.size)
+
+        val rawList = listOf(ChatSession("s1", "r1", "", 10L, running = false, blank = false))
+        val titled = rawList.withSessionHistory("s1", history)
+        assertEquals("Release v1.2.0", titled.single().title)
+        val preserved = rawList.preservingTitles(titled)
+        assertEquals("Release v1.2.0", preserved.single().title)
     }
 
     private fun entry(type: String, seq: Int, data: String, view: String? = null) = HistoryEntry(

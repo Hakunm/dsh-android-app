@@ -4,9 +4,10 @@ import java.io.ByteArrayInputStream
 import java.io.ByteArrayOutputStream
 import okhttp3.mockwebserver.MockResponse
 import okhttp3.mockwebserver.MockWebServer
-import org.junit.Assert.assertEquals
-import org.junit.Assert.assertTrue
 import org.junit.After
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
 import org.junit.Before
 import org.junit.Test
 
@@ -32,11 +33,18 @@ class DshClientTest {
 
     @Test
     fun healthAndPairingUsePublicUnauthenticatedRoutes() {
-        server.enqueue(MockResponse().setBody("""{"ok":true,"version":"v1"}""").setHeader("Content-Type", "application/json"))
+        server.enqueue(
+            MockResponse()
+                .setBody("""{"ok":true,"version":"v1","pluginVersion":"1.2.0","capabilities":["streaming","questions","pin"]}""")
+                .setHeader("Content-Type", "application/json"),
+        )
         server.enqueue(MockResponse().setResponseCode(201).setBody(PAIRING_RESPONSE).setHeader("Content-Type", "application/json"))
         val client = DshClient(server.url("/").toString())
 
-        assertEquals("v1", client.health().version)
+        val health = client.health()
+        assertEquals("v1", health.version)
+        assertEquals("1.2.0", health.pluginVersion)
+        assertEquals(listOf("streaming", "questions", "pin"), health.capabilities)
         assertEquals("secret-token", client.pair("ABCDEFGH", "Pixel").token)
 
         assertEquals("/api/v1/healthz", server.takeRequest().path)
@@ -66,6 +74,25 @@ class DshClientTest {
     }
 
     @Test
+    fun searchesFilesRecursivelyThroughAuthorizedRoot() {
+        server.enqueue(
+            MockResponse()
+                .setBody("""{"query":"readme","path":"docs","entries":[{"name":"README.md","path":"docs/README.md","kind":"file","size":128,"modifiedAt":1,"writable":true}],"truncated":false}""")
+                .setHeader("Content-Type", "application/json"),
+        )
+        val client = DshClient(server.url("/").toString(), "device-token")
+
+        val result = client.searchFiles("root-1", "readme", path = "docs", limit = 20)
+        assertEquals("readme", result.query)
+        assertEquals("docs/README.md", result.entries.single().path)
+        assertFalse(result.truncated)
+
+        val request = server.takeRequest()
+        assertEquals("GET", request.method)
+        assertEquals("/api/v1/roots/root-1/search?q=readme&path=docs&limit=20", request.path)
+    }
+
+    @Test
     fun streamsUploadsAndDownloadsWithoutBufferingWholeFiles() {
         server.enqueue(MockResponse().setHeader("ETag", "\"stream-etag\""))
         server.enqueue(MockResponse().setBody("streamed response"))
@@ -86,11 +113,18 @@ class DshClientTest {
     }
 
     @Test
-    fun requestsEarlierChatHistoryBySequence() {
-        server.enqueue(MockResponse().setBody("""{"events":[],"hasMore":false}""").setHeader("Content-Type", "application/json"))
+    fun requestsEarlierChatHistoryAndParsesBareWireEvents() {
+        server.enqueue(
+            MockResponse()
+                .setBody("""{"events":[{"type":"user/message","seq":41,"time":1000,"data":{"content":[{"type":"text","text":"Hi"}],"source":{"kind":"user"}}}],"hasMore":false,"cursor":41}""")
+                .setHeader("Content-Type", "application/json"),
+        )
         val client = DshClient(server.url("/").toString(), "device-token")
 
-        client.history("session/1", beforeSeq = 42, maxMessages = 25)
+        val history = client.history("session/1", beforeSeq = 42, maxMessages = 25)
+        assertEquals(41, history.events.single().event.seq)
+        assertEquals("user/message", history.events.single().event.type)
+        assertEquals("Hi", history.displayItems().single().body)
 
         val request = server.takeRequest()
         assertEquals("/api/v1/chat/sessions/session%2F1/messages?beforeSeq=42&maxMessages=25", request.path)
@@ -106,17 +140,19 @@ class DshClientTest {
     }
 
     @Test
-    fun readsDhsWorkspaceAndAgentChoicesAndCreatesByWorkspaceIdentity() {
+    fun readsDhsWorkspaceAndAgentChoicesIncludingOmittedTrustField() {
         server.enqueue(MockResponse().setBody(WORKSPACES_RESPONSE).setHeader("Content-Type", "application/json"))
         server.enqueue(MockResponse().setResponseCode(201).setBody(CREATED_WORKSPACE_RESPONSE).setHeader("Content-Type", "application/json"))
-        server.enqueue(MockResponse().setBody(PRESETS_RESPONSE).setHeader("Content-Type", "application/json"))
+        server.enqueue(MockResponse().setBody(PRESETS_WITHOUT_TRUST_RESPONSE).setHeader("Content-Type", "application/json"))
         server.enqueue(MockResponse().setResponseCode(201).setBody(CREATED_SESSION_RESPONSE).setHeader("Content-Type", "application/json"))
         server.enqueue(MockResponse().setBody(SELECTED_PRESET_RESPONSE).setHeader("Content-Type", "application/json"))
         val client = DshClient(server.url("/").toString(), "device-token")
 
         assertEquals("WebUI Workspace", client.chatWorkspaces().single().title)
         assertEquals("New Workspace", client.createChatWorkspace("root-1", "projects/new").title)
-        assertEquals("Coding", client.agentPresets().single().name)
+        val preset = client.agentPresets().single()
+        assertEquals("Coding", preset.name)
+        assertEquals("system", preset.trust)
         assertEquals("session-created", client.createSession("workspace-1", "standard").id)
         assertEquals("minimal", client.selectAgentPreset("session-created", "minimal"))
 
@@ -135,6 +171,66 @@ class DshClientTest {
         assertEquals("PUT", selection.method)
         assertEquals("/api/v1/chat/sessions/session-created/agent-preset", selection.path)
         assertTrue(selection.body.readUtf8().contains("\"agentPreset\":\"minimal\""))
+    }
+
+    @Test
+    fun managesPinArchiveSearchQueueQuestionsAndImageAttachmentsInV120() {
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"s1","rootId":"r1","cwd":"","updatedAt":1,"running":false,"blank":false,"pinned":true,"archived":true,"title":"Pinned"}]}""").setHeader("Content-Type", "application/json"))
+        server.enqueue(MockResponse().setBody("""{"items":[{"sessionId":"s1","snippet":"Liquid glass","session":{"id":"s1","rootId":"r1","cwd":"","updatedAt":1,"running":false,"blank":false,"title":"Pinned"}}],"hasMore":false,"mode":"fulltext"}""").setHeader("Content-Type", "application/json"))
+        server.enqueue(MockResponse().setBody("""{"pinned":true}""").setHeader("Content-Type", "application/json"))
+        server.enqueue(MockResponse().setBody("""{"pinned":false}""").setHeader("Content-Type", "application/json"))
+        server.enqueue(MockResponse().setBody("""{"archived":false}""").setHeader("Content-Type", "application/json"))
+        server.enqueue(MockResponse().setBody("""{"options":[{"value":"workspace-write","name":"Workspace Write"}],"defaultPreset":"workspace-write"}""").setHeader("Content-Type", "application/json"))
+        server.enqueue(MockResponse().setBody("""{"cursor":5,"active":true,"running":true,"queue":[{"id":"q-1","placement":"queue","content":[{"type":"text","text":"Follow up"}]}],"pendingInput":[]}""").setHeader("Content-Type", "application/json"))
+        server.enqueue(MockResponse().setBody("""{"accepted":true}""").setHeader("Content-Type", "application/json"))
+        server.enqueue(MockResponse().setBody("""{"items":[{"id":"ask-1","sessionId":"s1","state":"open","timed":false,"questions":[{"id":"q1","question":"Pick theme","options":[{"label":"Light"},{"label":"Dark"}],"multiSelect":false}],"requestedAt":10}]}""").setHeader("Content-Type", "application/json"))
+        server.enqueue(MockResponse().setResponseCode(202).setBody("""{"accepted":true}""").setHeader("Content-Type", "application/json"))
+        server.enqueue(MockResponse().setResponseCode(202).setBody("""{"message":{"accepted":true}}""").setHeader("Content-Type", "application/json"))
+
+        val client = DshClient(server.url("/").toString(), "device-token")
+
+        val sessions = client.sessions(includeArchived = true)
+        assertTrue(sessions.single().pinned)
+        assertTrue(sessions.single().archived)
+        val search = client.searchSessions("glass", includeArchived = true)
+        assertEquals("fulltext", search.mode)
+        assertEquals("Liquid glass", search.items.single().snippet)
+        client.pinSession("s1")
+        client.unpinSession("s1")
+        client.unarchiveSession("s1")
+        assertEquals("workspace-write", client.permissionCatalog().defaultPreset)
+        val state = client.sessionState("s1")
+        assertEquals("Follow up", state.queue!!.single().displayText())
+        client.updateQueue("s1", "q-1", "edit", "Updated follow up")
+        val question = client.pendingQuestions("s1").single()
+        assertEquals("Pick theme", question.questions.single().question)
+        client.answerQuestion("s1", "ask-1", listOf(QuestionAnswerItem("q1", listOf("Dark"), null)))
+        client.sendMessage(
+            "s1",
+            "Check this screenshot",
+            steer = false,
+            attachments = listOf(ImageAttachment(mediaType = "image/png", data = "AAAA", name = "screen.png")),
+        )
+
+        assertEquals("/api/v1/chat/sessions?includeArchived=true", server.takeRequest().path)
+        assertEquals("/api/v1/chat/sessions/search?q=glass&includeArchived=true", server.takeRequest().path)
+        assertEquals("POST", server.takeRequest().method)
+        assertEquals("DELETE", server.takeRequest().method)
+        assertEquals("/api/v1/chat/sessions/s1/unarchive", server.takeRequest().path)
+        assertEquals("/api/v1/chat/permissions", server.takeRequest().path)
+        assertEquals("/api/v1/chat/sessions/s1/state", server.takeRequest().path)
+        val queueEdit = server.takeRequest()
+        assertEquals("/api/v1/chat/sessions/s1/queue/q-1", queueEdit.path)
+        assertTrue(queueEdit.body.readUtf8().contains("\"kind\":\"edit\""))
+        assertEquals("/api/v1/chat/sessions/s1/questions", server.takeRequest().path)
+        val answerReq = server.takeRequest()
+        assertEquals("/api/v1/chat/sessions/s1/questions/ask-1/answer", answerReq.path)
+        assertTrue(answerReq.body.readUtf8().contains("\"selected\":[\"Dark\"]"))
+        val msgReq = server.takeRequest()
+        val msgBody = msgReq.body.readUtf8()
+        assertTrue(msgBody.contains("\"type\":\"image\""))
+        assertTrue(msgBody.contains("\"mediaType\":\"image/png\""))
+        assertTrue(msgBody.contains("\"name\":\"screen.png\""))
     }
 
     @Test
@@ -223,15 +319,17 @@ class DshClientTest {
     }
 
     @Test
-    fun readsAndUpdatesProviderSettingsWithoutExpectingSecretValues() {
+    fun readsUpdatesAndRemovesProviderSettingsWithoutExpectingSecretValues() {
         server.enqueue(MockResponse().setBody(PROVIDER_SETTINGS_RESPONSE).setHeader("Content-Type", "application/json"))
         server.enqueue(MockResponse().setBody(PROVIDER_SETTINGS_RESPONSE).setHeader("Content-Type", "application/json"))
         server.enqueue(MockResponse().setResponseCode(201).setBody(PROVIDER_SETTINGS_RESPONSE).setHeader("Content-Type", "application/json"))
         server.enqueue(MockResponse().setBody(DISCOVERED_MODELS_RESPONSE).setHeader("Content-Type", "application/json"))
+        server.enqueue(MockResponse().setResponseCode(204))
         val client = DshClient(server.url("/").toString(), "device-token")
 
         val settings = client.providerSettings()
         assertTrue(settings.providers.single().credential.configured)
+        assertEquals("https://default.example/v1", settings.providers.single().defaultBaseURL)
         assertEquals("openai-completions", settings.customProvider.protocols.first())
         client.updateProvider(
             "custom-openai",
@@ -247,6 +345,7 @@ class DshClientTest {
             ),
         )
         assertEquals("model-b", client.discoverModels("custom-openai", null, null, null).single().id)
+        client.removeProvider("acme-gateway", expectedRevision = 3)
 
         assertEquals("/api/v1/settings/providers", server.takeRequest().path)
         val update = server.takeRequest()
@@ -259,6 +358,9 @@ class DshClientTest {
         assertEquals("/api/v1/settings/providers", create.path)
         assertTrue(create.body.readUtf8().contains("\"id\":\"acme-gateway\""))
         assertEquals("/api/v1/settings/providers/custom-openai/discover", server.takeRequest().path)
+        val remove = server.takeRequest()
+        assertEquals("DELETE", remove.method)
+        assertEquals("/api/v1/settings/providers/acme-gateway?expectedRevision=3", remove.path)
     }
 
     private companion object {
@@ -267,7 +369,7 @@ class DshClientTest {
         const val WORKSPACES_RESPONSE = """{"items":[{"id":"workspace-1","title":"WebUI Workspace","rootId":"root-1","path":"project","createdAt":"2026-08-14T00:00:00.000Z","updatedAt":"2026-08-14T00:00:00.000Z"}]}"""
         const val CREATED_WORKSPACE_RESPONSE = """{"workspace":{"id":"workspace-2","title":"New Workspace","rootId":"root-1","path":"projects/new","createdAt":"2026-08-14T00:00:00.000Z","updatedAt":"2026-08-14T00:00:00.000Z"}}"""
         const val RENAMED_WORKSPACE_RESPONSE = """{"workspace":{"id":"workspace-1","title":"Renamed Workspace","rootId":"root-1","path":"project","createdAt":"2026-08-14T00:00:00.000Z","updatedAt":"2026-08-15T00:00:00.000Z"}}"""
-        const val PRESETS_RESPONSE = """{"items":[{"id":"standard","name":"Coding","description":"Full coding agent","trust":"system","isDefault":true,"available":true}]}"""
+        const val PRESETS_WITHOUT_TRUST_RESPONSE = """{"items":[{"id":"standard","name":"Coding","description":"Full coding agent","isDefault":true,"available":true}]}"""
         const val CREATED_SESSION_RESPONSE = """{"session":{"id":"session-created","agentPreset":"standard"}}"""
         const val SELECTED_PRESET_RESPONSE = """{"agentPreset":"minimal"}"""
         const val SESSION_MODELS_RESPONSE = """{"current":{"provider":"opencode-go","model":"deepseek-v4-pro","reasoningEffort":"max"},"routable":true,"groups":[{"id":"opencode-go","name":"OpenCode Go","models":[{"id":"deepseek-v4-pro","name":"DeepSeek V4 Pro","reasoning":{"efforts":[{"id":"off","name":"Off"},{"id":"high","name":"High"},{"id":"max","name":"Max"}],"defaultEffort":"max"}}]}],"failures":[]}"""
@@ -275,7 +377,7 @@ class DshClientTest {
         const val APPROVALS_RESPONSE = """{"items":[{"id":"approval-1","sessionId":"session/1","toolName":"bash","reason":"danger-full-access","detail":"echo [REDACTED]","risk":"full-access","requestedAt":1}]}"""
         const val COMMANDS_RESPONSE = """{"items":[{"name":"permission","description":"Change the permission preset","input":{"hint":"preset"}}]}"""
         const val COMMAND_EXECUTION_RESPONSE = """{"execution":{"commandId":"permission","result":{"kind":"text","text":"workspace-write"}}}"""
-        const val PROVIDER_SETTINGS_RESPONSE = """{"writable":true,"revisionByNamespace":{"llm-pi-ai":3},"customProvider":{"available":true,"protocols":["openai-completions","openai-responses","anthropic-messages"],"revision":3},"providers":[{"id":"custom-openai","displayName":"Custom OpenAI","active":true,"configurable":true,"configured":true,"removable":true,"credential":{"ref":"CUSTOM_OPENAI_API_KEY","configured":true,"writable":true},"config":{"baseURL":"https://api.example/v1","api":"openai-completions","models":[{"id":"model-a"}]}}]}"""
+        const val PROVIDER_SETTINGS_RESPONSE = """{"writable":true,"revisionByNamespace":{"llm-pi-ai":3},"customProvider":{"available":true,"protocols":["openai-completions","openai-responses","anthropic-messages"],"revision":3},"providers":[{"id":"custom-openai","displayName":"Custom OpenAI","active":true,"defaultBaseURL":"https://default.example/v1","configurable":true,"configured":true,"removable":true,"credential":{"ref":"CUSTOM_OPENAI_API_KEY","configured":true,"writable":true},"config":{"baseURL":"https://api.example/v1","api":"openai-completions","models":[{"id":"model-a"}]}}]}"""
         const val DISCOVERED_MODELS_RESPONSE = """{"models":[{"id":"model-b","name":"Model B"}]}"""
     }
 }

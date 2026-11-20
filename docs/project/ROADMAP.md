@@ -35,3 +35,7 @@
 | REL-002 | done | 创建 GitHub 公开仓库并推送源码；参考高关注 DSH 项目重构中英双语 README，加入真实脱敏截图并发布含正式签名 APK 的 v1.0.0 Release |
 | REL-003 | done | v1.0.0 使用最终 DSH 文案、AGPLv3、真实手机截图和正式签名 APK，以单一根提交重写公开 `main` 与标签并替换 Release 产物 |
 | REL-004 | done | App 加入 `dsh-plugin` topic；App 与插件 README 刷新后继续以各自单一根提交发布，不保留中间修改历史 |
+| COMPAT-001 | done | 适配 DeepSeek Harness `0.2.x` 与 `dsh-workspace` `v1.2.0`：兼容裸 `SessionWireEvent` 历史、`AgentPreset` 默认值、流式增量与对象参数工具摘要，修复断网重连误清本机令牌问题 |
+| FEATURE-001 | done | 补全 `dsh-workspace` `v1.2.0` 全部新增能力：会话置顶/取消置顶、归档恢复、全文搜索、递归文件搜索、排队消息编辑/插队/删除、Agent 交互式提问卡片、图片附件发送、动态权限目录、健康能力与自定义供应商删除 |
+| UI-005 | done | 基于 `Kyant0/AndroidLiquidGlass`（`backdrop 2.0.0` + `shapes 1.2.0`）重构高密度通透 Apple Liquid Glass 浅色/深色玻璃界面、五槽悬浮液态玻璃底栏、独立工作区页与悬浮玻璃聊天/编辑器控件 |
+| REL-005 | done | 发布 `dsh-android-app` `v1.2.0`（versionCode `10200`、compileSdk `37`），更新全部 6 张液态玻璃截图、中英文 README、项目文档、正式签名 APK 与 GitHub Release |

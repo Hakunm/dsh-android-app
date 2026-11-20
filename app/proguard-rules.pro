@@ -1,5 +1,7 @@
 -keepattributes *Annotation*
 -keep class kotlinx.serialization.** { *; }
+-keep class com.kyant.backdrop.** { *; }
+-keep class com.kyant.shapes.** { *; }
 -dontwarn org.conscrypt.**
 -dontwarn org.bouncycastle.**
 -dontwarn org.openjsse.**

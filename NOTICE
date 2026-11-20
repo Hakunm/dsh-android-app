@@ -7,3 +7,8 @@ Licensed under the MIT License. See THIRD_PARTY_LICENSES/DEEPSEEK_HARNESS_LICENS
 Markdown rendering uses multiplatform-markdown-renderer by Mike Penz.
 Copyright 2025 Mike Penz. Licensed under the Apache License, Version 2.0.
 See THIRD_PARTY_LICENSES/MULTIPLATFORM_MARKDOWN_RENDERER_LICENSE.
+
+Liquid Glass optical backdrop and squircle shape primitives use AndroidLiquidGlass
+(io.github.kyant0:backdrop and io.github.kyant0:shapes) by Kyant0.
+Copyright 2025 Kyant0. Licensed under the Apache License, Version 2.0.
+See THIRD_PARTY_LICENSES/ANDROID_LIQUID_GLASS_LICENSE.

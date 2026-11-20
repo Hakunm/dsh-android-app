@@ -1,5 +1,10 @@
 # 测试记录
 
+- 2026-11-21 `v1.2.0` 正式发布验证：
+  - Temurin 17 + Android SDK 37 下 `docsCheck testDebugUnitTest lintDebug assembleRelease` 全部通过，8 份文档 / 37 个任务一致，R8 Release 与专用签名验证通过。
+  - 单元测试覆盖 `dsh-workspace@1.2.0` 全部新增契约（递归文件搜索、归档/置顶/取消置顶、会话全文搜索、动态权限目录、会话排队状态更新、交互提问读取与提交、图片附件发送、自定义供应商删除、DSH `0.2.x` 裸 `SessionWireEvent` 与流式增量、缺省 `AgentPreset.trust` 字段）。
+  - 正式签名 APK：`artifacts/DeepSeek-Harness-v1.2.0.apk`，2,633,732 字节，SHA-256 `CC9C5C36F421DAE3C4C82E93F8E23629E69C8A9C13E4BBDC80E7D82112C2C5A4`；`apksigner verify --verbose` 验证 APK Signature Scheme v2，单一 Hakunm 4096 位 RSA 正式证书（SHA-256 `A92938B33F59D90993ADA96437F8A8DEF987A27353E46A018661DDC1587046B1`）；`aapt` 确认包名 `io.github.hakunm.deepseekharness`、versionCode `10200`、versionName `1.2.0`、min SDK 26、target SDK 36、compile SDK 37。
+  - MuMu Android 15 模拟器端到端验收：连接真实 `@deepseek-ai/dsh@0.2.2-rc.5` + `dsh-workspace@1.2.0` 验证一次性配对、WebSocket 实时同步、新建工作区与会话、Agent 模式、动态权限目录、授权根目录浏览、Markdown 预览与源码编辑器、模型供应商与浅色/深色液态玻璃切换，`logcat` 零崩溃；并完成 6 张全新液态玻璃界面截图逐张人工复核，确认无敏感路径、令牌或个人 IP。
 - 2026-08-15 README 六图复验：中英文 README 均引用 6 张存在的 JPG；新增图片与用户原始真机截图 SHA-256 一致，截图来源说明已删除。
 - 2026-08-15 最终发布刷新：Temurin 17 下 `docsCheck testDebugUnitTest lintDebug assembleRelease` 通过，8 份文档/31 个任务一致，lint、R8 Release 与专用签名门禁全部成功。正式 APK 为 2,561,512 字节，SHA-256 `80940602D79ACB68D5805122FEC4E6678F39ADEF02DEDAEE4DD7B4856CD7DBBE`。
 - 2026-08-15 README 图片复验：使用用户提供的 4 张真实手机截图展示导航、聊天、带行号/缩放的文本编辑器和模型供应商；连接地址已打码，未采用模拟器截图。Oracle 会话存储与工作区注册表均确认只保留 1 个本次发布演示会话。

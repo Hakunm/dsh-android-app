@@ -9,7 +9,7 @@ captures/
 .tmp/
 .tmp-*.png
 artifacts/*
-!artifacts/DeepSeek-Harness-v1.0.0.apk
+!artifacts/DeepSeek-Harness-v1.2.0.apk
 !artifacts/SHA256SUMS.txt
 *.jks
 *.keystore

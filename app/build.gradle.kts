@@ -16,14 +16,14 @@ val hasDedicatedSigning = signingValues.isNotEmpty()
 
 android {
     namespace = "io.github.hakunm.deepseekharness"
-    compileSdk = 36
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "io.github.hakunm.deepseekharness"
         minSdk = 26
         targetSdk = 36
-        versionCode = 10000
-        versionName = "1.0.0"
+        versionCode = 10200
+        versionName = "1.2.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
         vectorDrawables.useSupportLibrary = true
     }
@@ -99,6 +99,8 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.okhttp)
     implementation(libs.markdown.renderer.m3)
+    implementation(libs.kyant.backdrop)
+    implementation(libs.kyant.shapes)
 
     testImplementation(libs.junit)
     testImplementation(libs.mockwebserver)
