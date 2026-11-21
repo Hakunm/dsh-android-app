@@ -11,28 +11,110 @@
 <p align="center">
   <img alt="Version" src="https://img.shields.io/badge/version-v1.2.0-087f8c">
   <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3ddc84">
-  <img alt="Jetpack Compose" src="https://img.shields.io/badge/UI-Jetpack_Compose_%2B_Liquid_Glass-6750a4">
+  <img alt="Jetpack Compose" src="https://img.shields.io/badge/UI-Jetpack_Compose-2563eb">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0-2da44e">
 </p>
 
 `dsh-android-app` is a native Android client for your own DeepSeek Harness installation. It connects through [dsh-workspace](https://github.com/Hakunm/dsh-workspace), keeping your phone and DSH WebUI on the same workspaces, sessions, models, and files.
 
-Continue conversations, follow task progress, decide approvals and interactive questions, switch permissions and models, or browse, search, and edit authorized server files from your phone. The app defaults to Chinese and can switch to English as well as Light/Dark appearance in Settings.
+Continue conversations, follow task progress, decide approvals and interactive questions, switch permissions and models, or browse, search, and edit authorized server files from your phone. The app defaults to Chinese, supports switching to English, and automatically follows the system Light/Dark appearance by default.
 
 ## Screenshots
 
-<p align="center">
-  <img src="./assets/screenshots/app-navigation.jpg" width="47%" alt="Session list and bottom navigation">
-  <img src="./assets/screenshots/chat-demo.jpg" width="47%" alt="Chat and live responses">
-</p>
-<p align="center">
-  <img src="./assets/screenshots/file-browser.jpg" width="47%" alt="Authorized-root file browser">
-  <img src="./assets/screenshots/file-editor.jpg" width="47%" alt="Text editor with line numbers and zoom">
-</p>
-<p align="center">
-  <img src="./assets/screenshots/workspace-create.jpg" width="47%" alt="Create a workspace and start a session">
-  <img src="./assets/screenshots/model-providers.jpg" width="47%" alt="Model provider settings">
-</p>
+### 1. Home, Slide-Over Navigation & Dual-Mode Appearance
+
+<table>
+  <tr>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/home-light.jpg" width="96%" alt="Chat home in Light mode"><br>
+      <sub><b>Chat Home (Light)</b><br>Workspace switcher pill &amp; floating composer</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/home-dark.jpg" width="96%" alt="Chat home in Dark mode"><br>
+      <sub><b>Chat Home (Dark)</b><br>Automatic system-following dark appearance</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/navigation-drawer.jpg" width="96%" alt="Navigation drawer and recent sessions"><br>
+      <sub><b>Navigation Drawer &amp; Recents</b><br>Section links, full-text search &amp; pinned sessions</sub>
+    </td>
+  </tr>
+</table>
+
+### 2. Composer Attachments, Slash Commands & Model Routing
+
+<table>
+  <tr>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/add-to-chat.jpg" width="96%" alt="Add to chat bottom sheet"><br>
+      <sub><b>Add to Chat (+)</b><br>Camera, photos, files &amp; sandbox access mode</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/slash-commands.jpg" width="96%" alt="Host slash commands"><br>
+      <sub><b>Host Slash Commands (/)</b><br>Autocomplete and run server session commands</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/session-models.jpg" width="96%" alt="Session model and reasoning effort"><br>
+      <sub><b>Session Configuration</b><br>Switch Agent preset, model route &amp; reasoning effort</sub>
+    </td>
+  </tr>
+</table>
+
+### 3. Coding Stream, Command Approvals & Interactive Questions
+
+<table>
+  <tr>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/chat-coding.jpg" width="96%" alt="Coding conversation and reasoning"><br>
+      <sub><b>Coding Chat &amp; Reasoning</b><br>TODO progress, tool pills, collapsible thinking &amp; code</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/approval-gate.jpg" width="96%" alt="Single-time command approval"><br>
+      <sub><b>Single-Time Approval</b><br>Inspect redacted command preview &amp; Allow once / Reject</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/agent-question.jpg" width="96%" alt="Interactive agent question"><br>
+      <sub><b>Interactive Agent Question</b><br>Answer single/multi-select prompts inline</sub>
+    </td>
+  </tr>
+</table>
+
+### 4. Workspaces & Code File Editor
+
+<table>
+  <tr>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/workspaces.jpg" width="96%" alt="Workspaces management"><br>
+      <sub><b>DSH Workspaces</b><br>Browse, rename, remove or start a chat in any workspace</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/file-browser.jpg" width="96%" alt="Authorized-root file browser"><br>
+      <sub><b>Code File Browser</b><br>Root selector, recursive search, upload &amp; trash</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/code-editor-dark.jpg" width="96%" alt="Line-numbered code editor"><br>
+      <sub><b>Line-Numbered Editor</b><br>Synchronized gutter, Markdown preview, ETag &amp; zoom</sub>
+    </td>
+  </tr>
+</table>
+
+### 5. Device Pairing, Settings & Model Providers
+
+<table>
+  <tr>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/device-pairing.jpg" width="96%" alt="One-time pairing screen"><br>
+      <sub><b>One-Time Device Pairing</b><br>Health check, 10-minute pairing code &amp; Keystore storage</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/settings-dark.jpg" width="96%" alt="Settings and server capabilities"><br>
+      <sub><b>Settings &amp; Connection</b><br>Appearance modes, language toggle &amp; server capabilities</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/provider-editor.jpg" width="96%" alt="Model provider editor"><br>
+      <sub><b>Model Provider Editor</b><br>Write-only API keys, model discovery &amp; custom routes</sub>
+    </td>
+  </tr>
+</table>
 
 ## Download
 
@@ -74,20 +156,20 @@ The device token is stored using Android Keystore-backed encrypted storage. Tran
 - View authorized DSH sessions and live run state.
 - Stream assistant text and reasoning, then reconcile with server history on completion.
 - Render Markdown headings, lists, quotes, code blocks, and tables.
-- Send text and image attachments, manage queued messages (edit, remove, or steer), or cancel a running task.
+- Send text, camera photos, and gallery image attachments; manage queued messages (edit, remove, or steer); or cancel a running task.
 - Follow DSH TODO progress and the currently active item.
-- Type `/` to browse and run host-provided slash commands.
-- Switch between server-provided permission modes (Read only, Workspace write, and Full access with confirmation).
-- Review redacted approval details to Allow once or Deny, and answer interactive agent questions inline.
+- Type `/` or tap the command button to browse and run host-provided slash commands.
+- Open the `+` sheet to switch between server-provided permission modes (Read only, Workspace write, and Full access with confirmation).
+- Review redacted approval details to Allow once or Reject, and answer interactive agent questions inline.
 - Select a model and reasoning effort. Empty sessions can also select an Agent before the first message.
 
 ## Workspaces and sessions
 
-New sessions may use a workspace already registered in DSH WebUI. You may also pick an existing directory from an authorized root and register it as a new DSH workspace.
+From the Home screen, you can pick any registered DSH WebUI workspace and send a prompt to start a new session immediately, or open the New Session sheet to browse an authorized root and register an existing directory as a new DSH workspace.
 
-The Workspaces tab supports listing, creating, renaming, and removing workspace registrations. Removing a registration does not delete its directory, files, or session logs.
+The Workspaces view supports listing, creating, renaming, and removing workspace registrations. Removing a registration does not delete its directory, files, or session logs.
 
-Sessions can be filtered by status or workspace and searched across full text. Each session menu provides:
+The slide-over navigation drawer provides quick access to Chats, Workspaces, Code files, and Settings, along with full-text session search and an archived-sessions toggle. Each session menu provides:
 
 - **Pin / Unpin** to keep priority conversations at the top.
 - **Rename** to change its DSH WebUI title.
@@ -128,7 +210,7 @@ The server controls which features are available:
 | Scope | App access |
 | --- | --- |
 | `chat.read` | Workspaces, sessions, search, messages, queue, TODOs, commands, approvals, and questions |
-| `chat.write` | Manage workspaces/sessions, send text & images, edit queue, configure, run commands, decide approvals, and answer questions |
+| `chat.write` | Manage workspaces/sessions, send text &amp; images, edit queue, configure, run commands, decide approvals, and answer questions |
 | `files.read` | Browse, search, preview, download, and view trash |
 | `files.write` | Create, edit, upload, move, and rename |
 | `files.delete` | Move files or directories to plugin trash |

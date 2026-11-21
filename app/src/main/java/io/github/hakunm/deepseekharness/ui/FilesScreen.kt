@@ -7,6 +7,7 @@ import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.calculateZoom
@@ -25,7 +26,6 @@ import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
@@ -35,12 +35,11 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.outlined.ArrowBack
 import androidx.compose.material.icons.automirrored.outlined.DriveFileMove
 import androidx.compose.material.icons.automirrored.outlined.InsertDriveFile
+import androidx.compose.material.icons.outlined.Add
 import androidx.compose.material.icons.outlined.ArrowUpward
 import androidx.compose.material.icons.outlined.Code
-import androidx.compose.material.icons.outlined.CreateNewFolder
 import androidx.compose.material.icons.outlined.DataObject
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Description
@@ -49,6 +48,7 @@ import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.RestoreFromTrash
@@ -76,7 +76,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.clipToBounds
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalContext
@@ -89,8 +88,6 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import com.kyant.backdrop.backdrops.layerBackdrop
-import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.mikepenz.markdown.m3.Markdown
 import com.mikepenz.markdown.m3.markdownTypography
 import io.github.hakunm.deepseekharness.HarnessState
@@ -99,10 +96,6 @@ import io.github.hakunm.deepseekharness.OpenDocument
 import io.github.hakunm.deepseekharness.R
 import io.github.hakunm.deepseekharness.data.FileEntry
 import io.github.hakunm.deepseekharness.ui.glass.CompactSearchPill
-import io.github.hakunm.deepseekharness.ui.glass.CrispCard
-import io.github.hakunm.deepseekharness.ui.glass.LiquidGlassFloatingBar
-import io.github.hakunm.deepseekharness.ui.glass.LiquidGlassIconButton
-import io.github.hakunm.deepseekharness.ui.glass.SquircleIconBadge
 import io.github.hakunm.deepseekharness.ui.theme.LocalGlassPalette
 import kotlin.math.roundToInt
 
@@ -111,11 +104,12 @@ fun FilesScreen(
     state: HarnessState,
     viewModel: HarnessViewModel,
     wide: Boolean,
-    bottomDockInset: Dp = 0.dp,
+    onOpenDrawer: (() -> Unit)? = null,
     externalCreateDirectory: Boolean? = null,
     onConsumeExternalCreate: () -> Unit = {},
 ) {
     val context = LocalContext.current
+    val palette = LocalGlassPalette.current
     var createDirectory by remember { mutableStateOf<Boolean?>(null) }
     var moveDialog by remember { mutableStateOf(false) }
     var trashDialog by remember { mutableStateOf(false) }
@@ -153,25 +147,32 @@ fun FilesScreen(
     val download: () -> Unit = { state.document?.entry?.name?.let(downloadLauncher::launch) }
 
     if (state.roots.isEmpty()) {
-        Box(Modifier.fillMaxSize().statusBarsPadding(), contentAlignment = Alignment.Center) {
-            EmptyState(Icons.Outlined.FolderOpen, stringResource(R.string.no_roots))
+        Column(Modifier.fillMaxSize().background(palette.settingsCanvas)) {
+            MinimalTopBar(
+                title = stringResource(R.string.code_workspace_files),
+                backgroundColor = palette.settingsCanvas,
+                onNavigationClick = onOpenDrawer,
+            )
+            Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                EmptyState(Icons.Outlined.FolderOpen, stringResource(R.string.no_roots))
+            }
         }
         return
     }
+
     if (wide) {
         Row(
-            Modifier.fillMaxSize().padding(end = 8.dp, top = 6.dp, bottom = 6.dp),
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            Modifier.fillMaxSize().background(palette.settingsCanvas),
         ) {
             FileBrowser(
                 state = state,
                 viewModel = viewModel,
+                onOpenDrawer = null,
                 onNewFile = { createDirectory = false },
                 onNewFolder = { createDirectory = true },
                 onUpload = { uploadLauncher.launch(arrayOf("*/*")) },
                 onTrash = { viewModel.loadTrash(); trashDialog = true },
-                bottomDockInset = bottomDockInset,
-                modifier = Modifier.width(310.dp).fillMaxHeight(),
+                modifier = Modifier.width(330.dp).fillMaxHeight(),
             )
             EditorPane(
                 state = state,
@@ -187,11 +188,11 @@ fun FilesScreen(
         FileBrowser(
             state = state,
             viewModel = viewModel,
+            onOpenDrawer = onOpenDrawer,
             onNewFile = { createDirectory = false },
             onNewFolder = { createDirectory = true },
             onUpload = { uploadLauncher.launch(arrayOf("*/*")) },
             onTrash = { viewModel.loadTrash(); trashDialog = true },
-            bottomDockInset = bottomDockInset,
             modifier = Modifier.fillMaxSize(),
         )
     } else {
@@ -220,55 +221,93 @@ fun FilesScreen(
 private fun FileBrowser(
     state: HarnessState,
     viewModel: HarnessViewModel,
+    onOpenDrawer: (() -> Unit)?,
     onNewFile: () -> Unit,
     onNewFolder: () -> Unit,
     onUpload: () -> Unit,
     onTrash: () -> Unit,
-    bottomDockInset: Dp,
     modifier: Modifier,
 ) {
     var rootMenu by remember { mutableStateOf(false) }
-    var createMenu by remember { mutableStateOf(false) }
+    var actionsMenu by remember { mutableStateOf(false) }
     val canWrite = "files.write" in state.device?.scopes.orEmpty()
     val palette = LocalGlassPalette.current
     val fileSearchResults = state.fileSearchResults
     val searchActive = fileSearchResults != null
 
-    Column(modifier) {
-        // Seamless Pure White/Dark Top Header Zone (matching Home screen!)
+    Column(modifier.background(palette.settingsCanvas)) {
+        MinimalTopBar(
+            title = stringResource(R.string.code_workspace_files),
+            backgroundColor = palette.settingsCanvas,
+            onNavigationClick = onOpenDrawer,
+            trailing = {
+                Box {
+                    TopBarIconAction(
+                        onClick = { actionsMenu = true },
+                        contentDescription = stringResource(R.string.file_actions),
+                    ) {
+                        Icon(Icons.Outlined.Add, null, Modifier.size(20.dp), tint = MaterialTheme.colorScheme.onBackground)
+                    }
+                    DropdownMenu(expanded = actionsMenu, onDismissRequest = { actionsMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.new_file)) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Outlined.InsertDriveFile, null) },
+                            enabled = canWrite,
+                            onClick = { actionsMenu = false; onNewFile() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.new_folder)) },
+                            leadingIcon = { Icon(Icons.Outlined.Folder, null) },
+                            enabled = canWrite,
+                            onClick = { actionsMenu = false; onNewFolder() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.upload)) },
+                            leadingIcon = { Icon(Icons.Outlined.UploadFile, null) },
+                            enabled = canWrite,
+                            onClick = { actionsMenu = false; onUpload() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.trash)) },
+                            leadingIcon = { Icon(Icons.Outlined.RestoreFromTrash, null) },
+                            onClick = { actionsMenu = false; onTrash() },
+                        )
+                    }
+                }
+            },
+        )
+
         Column(
             modifier = Modifier
                 .fillMaxWidth()
-                .background(palette.headerBackground)
-                .statusBarsPadding()
-                .padding(horizontal = 10.dp, vertical = 5.dp),
-            verticalArrangement = Arrangement.spacedBy(3.dp),
+                .padding(horizontal = 14.dp, vertical = 4.dp),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             Row(
                 Modifier.fillMaxWidth(),
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                horizontalArrangement = Arrangement.spacedBy(8.dp),
             ) {
                 Box {
                     Row(
                         modifier = Modifier
-                            .height(28.dp)
+                            .height(36.dp)
                             .clip(CircleShape)
-                            .background(palette.searchBackground, CircleShape)
+                            .background(palette.cardBackground, CircleShape)
                             .clickable { rootMenu = true }
-                            .padding(horizontal = 8.dp),
+                            .padding(horizontal = 12.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                        horizontalArrangement = Arrangement.spacedBy(5.dp),
                     ) {
-                        Icon(Icons.Outlined.FolderOpen, null, Modifier.size(13.5.dp), tint = MaterialTheme.colorScheme.primary)
+                        Icon(Icons.Outlined.FolderOpen, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onBackground)
                         Text(
                             state.roots.find { it.id == state.selectedRootId }?.label.orEmpty(),
-                            modifier = Modifier.widthIn(max = 76.dp),
+                            modifier = Modifier.widthIn(max = 92.dp),
                             maxLines = 1,
                             overflow = TextOverflow.Ellipsis,
                             style = MaterialTheme.typography.labelMedium,
                         )
-                        Icon(Icons.Outlined.ExpandMore, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                        Icon(Icons.Outlined.ExpandMore, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
                     }
                     DropdownMenu(expanded = rootMenu, onDismissRequest = { rootMenu = false }) {
                         state.roots.forEach { root ->
@@ -290,44 +329,25 @@ private fun FileBrowser(
                     clearContentDescription = stringResource(R.string.clear_search),
                     modifier = Modifier.weight(1f),
                 )
-
-                Box {
-                    IconButton(onClick = { createMenu = true }, enabled = canWrite, modifier = Modifier.size(27.dp)) {
-                        Icon(Icons.Outlined.CreateNewFolder, stringResource(R.string.create), Modifier.size(17.dp))
-                    }
-                    DropdownMenu(expanded = createMenu, onDismissRequest = { createMenu = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.new_file)) },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Outlined.InsertDriveFile, null) },
-                            onClick = { createMenu = false; onNewFile() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.new_folder)) },
-                            leadingIcon = { Icon(Icons.Outlined.Folder, null) },
-                            onClick = { createMenu = false; onNewFolder() },
-                        )
-                    }
-                }
-                IconButton(onClick = onUpload, enabled = canWrite, modifier = Modifier.size(27.dp)) {
-                    Icon(Icons.Outlined.UploadFile, stringResource(R.string.upload), Modifier.size(17.dp))
-                }
-                IconButton(onClick = onTrash, modifier = Modifier.size(27.dp)) {
-                    Icon(Icons.Outlined.RestoreFromTrash, stringResource(R.string.trash), Modifier.size(17.dp))
-                }
             }
 
             if (fileSearchResults == null) {
                 Row(
-                    Modifier.fillMaxWidth().height(24.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
                 ) {
-                    IconButton(
-                        onClick = { viewModel.loadDirectory(state.currentPath.substringBeforeLast('/', "")) },
-                        enabled = state.currentPath.isNotEmpty(),
-                        modifier = Modifier.size(22.dp),
-                    ) {
-                        Icon(Icons.Outlined.ArrowUpward, stringResource(R.string.go_up), Modifier.size(13.5.dp))
+                    if (state.currentPath.isNotEmpty()) {
+                        Box(
+                            modifier = Modifier
+                                .size(26.dp)
+                                .clip(CircleShape)
+                                .background(palette.pillBackground, CircleShape)
+                                .clickable { viewModel.loadDirectory(state.currentPath.substringBeforeLast('/', "")) },
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(Icons.Outlined.ArrowUpward, stringResource(R.string.go_up), Modifier.size(14.dp))
+                        }
                     }
                     Text(
                         "/${state.currentPath}",
@@ -337,35 +357,26 @@ private fun FileBrowser(
                         style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    IconButton(onClick = { viewModel.loadDirectory() }, modifier = Modifier.size(22.dp)) {
+                    IconButton(onClick = { viewModel.loadDirectory() }, modifier = Modifier.size(26.dp)) {
                         Icon(
                             Icons.Outlined.Refresh,
                             stringResource(R.string.refresh),
-                            Modifier.size(13.5.dp),
+                            Modifier.size(15.dp),
                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
             } else {
                 Row(
-                    Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp),
+                    Modifier.fillMaxWidth().padding(horizontal = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Column(Modifier.weight(1f)) {
-                        Text(
-                            stringResource(R.string.search_results_count, fileSearchResults.entries.size),
-                            style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.primary,
-                        )
-                        if (fileSearchResults.truncated) {
-                            Text(
-                                stringResource(R.string.search_truncated),
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                            )
-                        }
-                    }
+                    Text(
+                        stringResource(R.string.search_results_count, fileSearchResults.entries.size),
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.primary,
+                    )
                     Text(
                         stringResource(R.string.clear_search),
                         color = MaterialTheme.colorScheme.primary,
@@ -387,25 +398,27 @@ private fun FileBrowser(
             }
         } else {
             LazyColumn(
-                Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 6.dp, bottom = bottomDockInset + 10.dp),
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .navigationBarsPadding(),
+                contentPadding = PaddingValues(horizontal = 14.dp, vertical = 8.dp),
             ) {
                 item("file-list-card") {
-                    CrispCard(
+                    GroupedCard(
                         modifier = Modifier.fillMaxWidth(),
-                        cornerRadius = 10.dp,
-                        contentPadding = PaddingValues(0.dp),
+                        cornerRadius = 18.dp,
                     ) {
                         Column(Modifier.fillMaxWidth()) {
                             entries.forEachIndexed { index, entry ->
-                                FileCompactRow(
+                                FileMinimalRow(
                                     entry = entry,
                                     showRelativePath = searchActive,
                                     onOpen = { viewModel.openEntry(entry) },
                                     onAction = { viewModel.selectEntryForAction(entry) },
                                 )
                                 if (index != entries.lastIndex) {
-                                    HorizontalDivider(Modifier.padding(start = 46.dp), color = palette.divider)
+                                    HorizontalDivider(Modifier.padding(start = 48.dp), color = palette.divider)
                                 }
                             }
                         }
@@ -413,7 +426,7 @@ private fun FileBrowser(
                 }
                 if (!searchActive && state.directory?.nextCursor != null) {
                     item("load-more-files") {
-                        Box(Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
                             TextButton(onClick = viewModel::loadNextDirectoryPage) {
                                 Text(stringResource(R.string.load_more), style = MaterialTheme.typography.labelMedium)
                             }
@@ -426,21 +439,20 @@ private fun FileBrowser(
 }
 
 @Composable
-private fun FileCompactRow(
+private fun FileMinimalRow(
     entry: FileEntry,
     showRelativePath: Boolean,
     onOpen: () -> Unit,
     onAction: () -> Unit,
 ) {
-    val palette = LocalGlassPalette.current
     val isDir = entry.kind == "directory"
     val ext = entry.name.substringAfterLast('.', "").lowercase()
-    val (icon, tint) = when {
-        isDir -> Icons.Outlined.Folder to palette.accentBlue
-        ext in setOf("md", "markdown", "txt") -> Icons.Outlined.Description to palette.accentIndigo
-        ext in setOf("ts", "tsx", "js", "jsx", "kt", "java", "py", "rs", "go") -> Icons.Outlined.Code to palette.accentJade
-        ext in setOf("json", "yaml", "yml", "toml", "xml") -> Icons.Outlined.DataObject to palette.accentAmber
-        else -> Icons.AutoMirrored.Outlined.InsertDriveFile to MaterialTheme.colorScheme.outline
+    val icon = when {
+        isDir -> Icons.Outlined.Folder
+        ext in setOf("md", "markdown", "txt") -> Icons.Outlined.Description
+        ext in setOf("ts", "tsx", "js", "jsx", "kt", "java", "py", "rs", "go") -> Icons.Outlined.Code
+        ext in setOf("json", "yaml", "yml", "toml", "xml") -> Icons.Outlined.DataObject
+        else -> Icons.AutoMirrored.Outlined.InsertDriveFile
     }
     val kindLabel = stringResource(if (isDir) R.string.file_kind_directory else R.string.file_kind_file)
     val meta = when {
@@ -453,19 +465,22 @@ private fun FileCompactRow(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onOpen)
-            .padding(horizontal = 11.dp, vertical = 7.dp),
+            .padding(horizontal = 16.dp, vertical = 12.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SquircleIconBadge(
-            icon = icon,
-            startColor = tint,
-            size = 24.dp,
-            iconSize = 14.dp,
-            cornerRadius = 6.5.dp,
-            softTint = true,
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(19.dp),
+            tint = if (isDir) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onBackground,
         )
-        Column(Modifier.weight(1f).padding(horizontal = 9.dp)) {
-            Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+        Column(Modifier.weight(1f).padding(horizontal = 13.dp)) {
+            Text(
+                entry.name,
+                maxLines = 1,
+                overflow = TextOverflow.Ellipsis,
+                style = MaterialTheme.typography.titleSmall,
+            )
             if (showRelativePath) {
                 Text(
                     meta,
@@ -481,14 +496,14 @@ private fun FileCompactRow(
                 meta,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                modifier = Modifier.padding(end = 4.dp),
+                modifier = Modifier.padding(end = 6.dp),
             )
         }
-        IconButton(onClick = onAction, modifier = Modifier.size(24.dp)) {
+        IconButton(onClick = onAction, modifier = Modifier.size(28.dp)) {
             Icon(
-                Icons.Outlined.MoreVert,
+                Icons.Outlined.MoreHoriz,
                 stringResource(R.string.file_actions),
-                Modifier.size(15.dp),
+                Modifier.size(16.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -505,9 +520,10 @@ private fun EditorPane(
     onMove: () -> Unit,
     modifier: Modifier,
 ) {
+    val palette = LocalGlassPalette.current
     val document = state.document
     if (document == null) {
-        Box(modifier, contentAlignment = Alignment.Center) {
+        Box(modifier.background(palette.canvasBackground), contentAlignment = Alignment.Center) {
             EmptyState(Icons.AutoMirrored.Outlined.InsertDriveFile, stringResource(R.string.select_file))
         }
         return
@@ -519,19 +535,84 @@ private fun EditorPane(
     val applyZoom: (Float) -> Unit = { factor ->
         textScale = (textScale * factor).coerceIn(MIN_TEXT_SCALE, MAX_TEXT_SCALE)
     }
-    val palette = LocalGlassPalette.current
-    val editorBackdrop = rememberLayerBackdrop()
 
-    Box(modifier.imePadding()) {
-        Box(
-            Modifier
-                .fillMaxSize()
-                .background(palette.cardBackground)
-                .layerBackdrop(editorBackdrop),
-        ) {
+    Box(modifier.background(palette.cardBackground).imePadding()) {
+        Column(Modifier.fillMaxSize()) {
+            MinimalTopBar(
+                title = document.entry.name,
+                backgroundColor = palette.cardBackground,
+                onNavigationClick = onBack,
+                useBackIcon = true,
+                trailing = {
+                    if (markdown && document.text != null) {
+                        Box(
+                            modifier = Modifier
+                                .clip(CircleShape)
+                                .background(palette.pillBackground, CircleShape)
+                                .clickable { markdownPreview = !markdownPreview }
+                                .padding(horizontal = 10.dp, vertical = 4.dp),
+                        ) {
+                            Text(
+                                stringResource(if (markdownPreview) R.string.markdown_source else R.string.markdown_preview),
+                                color = MaterialTheme.colorScheme.onBackground,
+                                style = MaterialTheme.typography.labelSmall,
+                            )
+                        }
+                    }
+                    TopBarIconAction(
+                        onClick = viewModel::saveDocument,
+                        contentDescription = stringResource(R.string.save),
+                        enabled = document.text != null && document.entry.writable &&
+                            "files.write" in state.device?.scopes.orEmpty(),
+                    ) {
+                        Icon(
+                            Icons.Outlined.Save,
+                            contentDescription = stringResource(R.string.save),
+                            modifier = Modifier.size(19.dp),
+                            tint = MaterialTheme.colorScheme.primary,
+                        )
+                    }
+                    Box {
+                        TopBarIconAction(
+                            onClick = { actionsExpanded = true },
+                            contentDescription = stringResource(R.string.file_actions),
+                        ) {
+                            Icon(Icons.Outlined.MoreVert, null, Modifier.size(19.dp), tint = MaterialTheme.colorScheme.onBackground)
+                        }
+                        DropdownMenu(expanded = actionsExpanded, onDismissRequest = { actionsExpanded = false }) {
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.download)) },
+                                leadingIcon = { Icon(Icons.Outlined.Download, null) },
+                                enabled = document.entry.kind == "file",
+                                onClick = { actionsExpanded = false; onDownload() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.replace_file)) },
+                                leadingIcon = { Icon(Icons.Outlined.FileOpen, null) },
+                                enabled = document.entry.kind == "file" && "files.write" in state.device?.scopes.orEmpty(),
+                                onClick = { actionsExpanded = false; onReplace() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.rename_move)) },
+                                leadingIcon = { Icon(Icons.AutoMirrored.Outlined.DriveFileMove, null) },
+                                enabled = "files.write" in state.device?.scopes.orEmpty(),
+                                onClick = { actionsExpanded = false; onMove() },
+                            )
+                            DropdownMenuItem(
+                                text = { Text(stringResource(R.string.move_to_trash)) },
+                                leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) },
+                                enabled = "files.delete" in state.device?.scopes.orEmpty(),
+                                onClick = { actionsExpanded = false; viewModel.trashSelected() },
+                            )
+                        }
+                    }
+                },
+            )
+            HorizontalDivider(color = palette.divider)
+
             when {
                 document.text == null -> {
-                    Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                         EmptyState(
                             Icons.AutoMirrored.Outlined.InsertDriveFile,
                             if (document.entry.kind == "directory") document.entry.kind else stringResource(R.string.binary_file),
@@ -541,12 +622,12 @@ private fun EditorPane(
                 markdown && markdownPreview -> {
                     Column(
                         Modifier
-                            .fillMaxSize()
-                            .statusBarsPadding()
+                            .weight(1f)
+                            .fillMaxWidth()
                             .navigationBarsPadding()
                             .pinchToZoom(document.entry.path, applyZoom)
                             .verticalScroll(rememberScrollState())
-                            .padding(start = 14.dp, end = 14.dp, top = 52.dp, bottom = 58.dp),
+                            .padding(start = 16.dp, end = 16.dp, top = 12.dp, bottom = 58.dp),
                     ) {
                         Markdown(
                             content = document.text,
@@ -560,10 +641,10 @@ private fun EditorPane(
                         value = document.text,
                         onValueChange = viewModel::updateDocument,
                         scale = textScale,
-                        topInset = 50.dp,
+                        topInset = 10.dp,
                         modifier = Modifier
-                            .fillMaxSize()
-                            .statusBarsPadding()
+                            .weight(1f)
+                            .fillMaxWidth()
                             .navigationBarsPadding()
                             .pinchToZoom(document.entry.path, applyZoom),
                     )
@@ -571,147 +652,39 @@ private fun EditorPane(
             }
         }
 
-        // Sleek 36dp Floating Frosted Liquid Glass Header Capsule
-        LiquidGlassFloatingBar(
-            modifier = Modifier
-                .align(Alignment.TopCenter)
-                .fillMaxWidth()
-                .statusBarsPadding()
-                .padding(horizontal = 10.dp, vertical = 5.dp),
-            capsule = true,
-            backdrop = editorBackdrop,
-            contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp),
-        ) {
-            Row(
-                Modifier.fillMaxWidth(),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
-            ) {
-                if (onBack != null) {
-                    LiquidGlassIconButton(
-                        onClick = onBack,
-                        icon = Icons.AutoMirrored.Outlined.ArrowBack,
-                        contentDescription = stringResource(R.string.back),
-                        backdrop = editorBackdrop,
-                        size = 27.dp,
-                        iconSize = 15.dp,
-                    )
-                }
-                Column(Modifier.weight(1f).padding(horizontal = 2.dp)) {
-                    Text(
-                        document.entry.name,
-                        style = MaterialTheme.typography.titleSmall,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                    Text(
-                        document.entry.path,
-                        fontSize = 9.5.sp,
-                        lineHeight = 12.sp,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis,
-                    )
-                }
-                if (markdown && document.text != null) {
-                    Row(
-                        modifier = Modifier
-                            .clip(CircleShape)
-                            .background(palette.chipSelectedBackground, CircleShape)
-                            .clickable { markdownPreview = !markdownPreview }
-                            .padding(horizontal = 8.dp, vertical = 3.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Text(
-                            stringResource(if (markdownPreview) R.string.markdown_source else R.string.markdown_preview),
-                            color = MaterialTheme.colorScheme.primary,
-                            style = MaterialTheme.typography.labelSmall,
-                        )
-                    }
-                }
-                LiquidGlassIconButton(
-                    onClick = viewModel::saveDocument,
-                    icon = Icons.Outlined.Save,
-                    contentDescription = stringResource(R.string.save),
-                    enabled = document.text != null && document.entry.writable &&
-                        "files.write" in state.device?.scopes.orEmpty(),
-                    backdrop = editorBackdrop,
-                    tint = if (document.text != null && document.entry.writable) MaterialTheme.colorScheme.primary else Color.Unspecified,
-                    size = 27.dp,
-                    iconSize = 14.5.dp,
-                )
-                Box {
-                    LiquidGlassIconButton(
-                        onClick = { actionsExpanded = true },
-                        icon = Icons.Outlined.MoreVert,
-                        contentDescription = stringResource(R.string.file_actions),
-                        backdrop = editorBackdrop,
-                        size = 27.dp,
-                        iconSize = 15.dp,
-                    )
-                    DropdownMenu(expanded = actionsExpanded, onDismissRequest = { actionsExpanded = false }) {
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.download)) },
-                            leadingIcon = { Icon(Icons.Outlined.Download, null) },
-                            enabled = document.entry.kind == "file",
-                            onClick = { actionsExpanded = false; onDownload() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.replace_file)) },
-                            leadingIcon = { Icon(Icons.Outlined.FileOpen, null) },
-                            enabled = document.entry.kind == "file" && "files.write" in state.device?.scopes.orEmpty(),
-                            onClick = { actionsExpanded = false; onReplace() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.rename_move)) },
-                            leadingIcon = { Icon(Icons.AutoMirrored.Outlined.DriveFileMove, null) },
-                            enabled = "files.write" in state.device?.scopes.orEmpty(),
-                            onClick = { actionsExpanded = false; onMove() },
-                        )
-                        DropdownMenuItem(
-                            text = { Text(stringResource(R.string.move_to_trash)) },
-                            leadingIcon = { Icon(Icons.Outlined.DeleteOutline, null, tint = MaterialTheme.colorScheme.error) },
-                            enabled = "files.delete" in state.device?.scopes.orEmpty(),
-                            onClick = { actionsExpanded = false; viewModel.trashSelected() },
-                        )
-                    }
-                }
-            }
-        }
-
-        // Sleek 28dp Floating Frosted Liquid Glass Zoom Pill in Bottom-Right
         if (document.text != null) {
-            LiquidGlassFloatingBar(
+            Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
-                    .padding(horizontal = 10.dp, vertical = 8.dp),
-                capsule = true,
-                backdrop = editorBackdrop,
-                contentPadding = PaddingValues(horizontal = 5.dp, vertical = 2.dp),
+                    .padding(horizontal = 14.dp, vertical = 10.dp)
+                    .clip(CircleShape)
+                    .background(palette.pillBackground, CircleShape)
+                    .border(1.dp, palette.cardBorder, CircleShape)
+                    .padding(horizontal = 6.dp, vertical = 2.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(1.dp)) {
-                    IconButton(
-                        onClick = { textScale = (textScale - TEXT_SCALE_STEP).coerceAtLeast(MIN_TEXT_SCALE) },
-                        enabled = textScale > MIN_TEXT_SCALE,
-                        modifier = Modifier.size(24.dp),
-                    ) {
-                        Icon(Icons.Outlined.ZoomOut, stringResource(R.string.zoom_out), Modifier.size(13.5.dp))
-                    }
-                    Text(
-                        "${(textScale * 100).roundToInt()}%",
-                        modifier = Modifier.width(34.dp).clickable(enabled = textScale != 1f) { textScale = 1f },
-                        textAlign = TextAlign.Center,
-                        fontSize = 10.sp,
-                        lineHeight = 12.sp,
-                    )
-                    IconButton(
-                        onClick = { textScale = (textScale + TEXT_SCALE_STEP).coerceAtMost(MAX_TEXT_SCALE) },
-                        enabled = textScale < MAX_TEXT_SCALE,
-                        modifier = Modifier.size(24.dp),
-                    ) {
-                        Icon(Icons.Outlined.ZoomIn, stringResource(R.string.zoom_in), Modifier.size(13.5.dp))
-                    }
+                IconButton(
+                    onClick = { textScale = (textScale - TEXT_SCALE_STEP).coerceAtLeast(MIN_TEXT_SCALE) },
+                    enabled = textScale > MIN_TEXT_SCALE,
+                    modifier = Modifier.size(26.dp),
+                ) {
+                    Icon(Icons.Outlined.ZoomOut, stringResource(R.string.zoom_out), Modifier.size(14.dp))
+                }
+                Text(
+                    "${(textScale * 100).roundToInt()}%",
+                    modifier = Modifier.width(38.dp).clickable(enabled = textScale != 1f) { textScale = 1f },
+                    textAlign = TextAlign.Center,
+                    fontSize = 11.sp,
+                    lineHeight = 14.sp,
+                )
+                IconButton(
+                    onClick = { textScale = (textScale + TEXT_SCALE_STEP).coerceAtMost(MAX_TEXT_SCALE) },
+                    enabled = textScale < MAX_TEXT_SCALE,
+                    modifier = Modifier.size(26.dp),
+                ) {
+                    Icon(Icons.Outlined.ZoomIn, stringResource(R.string.zoom_in), Modifier.size(14.dp))
                 }
             }
         }
@@ -730,12 +703,12 @@ private fun NumberedTextEditor(
     val horizontal = rememberScrollState()
     val lineCount = value.count { it == '\n' } + 1
     val digits = lineCount.toString().length
-    val gutterWidth = (digits * 7 * scale + 18).dp
+    val gutterWidth = (digits * 7f * scale + 18f).dp
     val codeStyle = scaledTextStyle(
         TextStyle(
             fontFamily = FontFamily.Monospace,
             fontSize = 11.5.sp,
-            lineHeight = 16.5.sp,
+            lineHeight = 17.5.sp,
         ),
         scale,
     )
@@ -744,7 +717,7 @@ private fun NumberedTextEditor(
             Modifier
                 .width(gutterWidth)
                 .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.03f))
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.025f))
                 .clipToBounds(),
         ) {
             Text(
@@ -752,10 +725,10 @@ private fun NumberedTextEditor(
                 modifier = Modifier
                     .fillMaxWidth()
                     .offset { IntOffset(0, -vertical.value) }
-                    .padding(top = topInset, end = 6.dp),
+                    .padding(top = topInset, end = 7.dp),
                 color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 textAlign = TextAlign.End,
-                style = codeStyle.copy(fontSize = 10.5.sp * scale),
+                style = codeStyle.copy(fontSize = 11.sp * scale),
             )
         }
         BasicTextField(
@@ -766,7 +739,7 @@ private fun NumberedTextEditor(
                 .fillMaxHeight()
                 .horizontalScroll(horizontal)
                 .verticalScroll(vertical)
-                .padding(start = 9.dp, end = 10.dp, top = topInset, bottom = 58.dp),
+                .padding(start = 10.dp, end = 12.dp, top = topInset, bottom = 58.dp),
             textStyle = codeStyle.copy(color = MaterialTheme.colorScheme.onSurface),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         )
@@ -861,7 +834,7 @@ private fun TrashDialog(state: HarnessState, viewModel: HarnessViewModel, onClos
             } else {
                 LazyColumn(Modifier.fillMaxWidth().height(260.dp)) {
                     items(state.trash, key = { it.id }) { item ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().padding(vertical = 6.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 item.path,
                                 modifier = Modifier.weight(1f),
@@ -872,8 +845,8 @@ private fun TrashDialog(state: HarnessState, viewModel: HarnessViewModel, onClos
                             IconButton(
                                 onClick = { viewModel.restoreTrash(item.id) },
                                 enabled = "files.delete" in state.device?.scopes.orEmpty(),
-                                modifier = Modifier.size(28.dp),
-                            ) { Icon(Icons.Outlined.RestoreFromTrash, stringResource(R.string.restore), Modifier.size(16.dp)) }
+                                modifier = Modifier.size(30.dp),
+                            ) { Icon(Icons.Outlined.RestoreFromTrash, stringResource(R.string.restore), Modifier.size(17.dp)) }
                         }
                         HorizontalDivider(color = palette.divider)
                     }

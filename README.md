@@ -11,28 +11,110 @@
 <p align="center">
   <img alt="Version" src="https://img.shields.io/badge/version-v1.2.0-087f8c">
   <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3ddc84">
-  <img alt="Jetpack Compose" src="https://img.shields.io/badge/UI-Jetpack_Compose_%2B_Liquid_Glass-6750a4">
+  <img alt="Jetpack Compose" src="https://img.shields.io/badge/UI-Jetpack_Compose-2563eb">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0-2da44e">
 </p>
 
 `dsh-android-app` 是 DeepSeek Harness 的原生 Android 客户端。它通过 [dsh-workspace](https://github.com/Hakunm/dsh-workspace) 连接你自己的 DSH WebUI，让手机与网页端使用同一套工作区、会话、模型和文件。
 
-你可以在手机上继续聊天、查看任务进度、处理审批与提问、切换权限与模型，也可以直接浏览、搜索和编辑服务器允许访问的文件。App 默认中文，可在设置中切换 English 与浅色/深色外观。
+你可以在手机上继续聊天、查看任务进度、处理审批与提问、切换权限与模型，也可以直接浏览、搜索和编辑服务器允许访问的文件。App 默认中文，可在设置中切换 English，外观默认跟随系统自动切换浅色/深色模式。
 
 ## 界面预览
 
-<p align="center">
-  <img src="./assets/screenshots/app-navigation.jpg" width="47%" alt="会话列表与底部导航">
-  <img src="./assets/screenshots/chat-demo.jpg" width="47%" alt="聊天与实时回复">
-</p>
-<p align="center">
-  <img src="./assets/screenshots/file-browser.jpg" width="47%" alt="授权根目录文件浏览">
-  <img src="./assets/screenshots/file-editor.jpg" width="47%" alt="带行号和缩放的文本编辑器">
-</p>
-<p align="center">
-  <img src="./assets/screenshots/workspace-create.jpg" width="47%" alt="创建工作区并开始会话">
-  <img src="./assets/screenshots/model-providers.jpg" width="47%" alt="模型供应商设置">
-</p>
+### 1. 主界面、侧滑导航与浅/深双模式
+
+<table>
+  <tr>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/home-light.jpg" width="96%" alt="对话主页（浅色）"><br>
+      <sub><b>对话主页（浅色）</b><br>工作区快速切换与胶囊输入栏</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/home-dark.jpg" width="96%" alt="对话主页（深色）"><br>
+      <sub><b>对话主页（深色）</b><br>跟随系统自动切换深色外观</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/navigation-drawer.jpg" width="96%" alt="侧滑导航与最近会话"><br>
+      <sub><b>侧滑导航与最近会话</b><br>全局模块切换、全文搜索与会话置顶</sub>
+    </td>
+  </tr>
+</table>
+
+### 2. 对话输入扩展、斜杠命令与模型配置
+
+<table>
+  <tr>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/add-to-chat.jpg" width="96%" alt="添加到对话面板"><br>
+      <sub><b>添加到对话（+）</b><br>相机、相册、文件与沙箱权限快捷控制</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/slash-commands.jpg" width="96%" alt="斜杠命令补全"><br>
+      <sub><b>宿主斜杠命令（/）</b><br>即时浏览并执行服务端会话命令</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/session-models.jpg" width="96%" alt="会话模型与思考强度"><br>
+      <sub><b>会话配置面板</b><br>切换 Agent 模式、模型路由与思考强度</sub>
+    </td>
+  </tr>
+</table>
+
+### 3. 编码会话流、越界审批与交互提问
+
+<table>
+  <tr>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/chat-coding.jpg" width="96%" alt="编码会话与思考展开"><br>
+      <sub><b>编码会话与思考链</b><br>任务进度、工具摘要、可折叠思考与代码排版</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/approval-gate.jpg" width="96%" alt="单次命令审批"><br>
+      <sub><b>单次命令审批</b><br>查看脱敏命令预览并决定允许一次或拒绝</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/agent-question.jpg" width="96%" alt="Agent 交互式提问"><br>
+      <sub><b>Agent 交互式提问</b><br>任务中途单选/多选澄清与自定义回复</sub>
+    </td>
+  </tr>
+</table>
+
+### 4. 工作区管理与 Code 文件编辑
+
+<table>
+  <tr>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/workspaces.jpg" width="96%" alt="工作区管理"><br>
+      <sub><b>DSH 工作区管理</b><br>查看、重命名、移除登记或直接发起会话</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/file-browser.jpg" width="96%" alt="授权根文件浏览"><br>
+      <sub><b>Code 文件浏览与搜索</b><br>授权根目录切换、递归搜索与回收站</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/code-editor-dark.jpg" width="96%" alt="带行号与缩放的代码编辑器"><br>
+      <sub><b>行号代码编辑器</b><br>同步行号、Markdown 预览、ETag 与缩放</sub>
+    </td>
+  </tr>
+</table>
+
+### 5. 设备配对、系统设置与模型供应商
+
+<table>
+  <tr>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/device-pairing.jpg" width="96%" alt="一次性配对码连接"><br>
+      <sub><b>设备一次性配对</b><br>连接测试、十分钟配对码兑换与安全存储</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/settings-dark.jpg" width="96%" alt="设置与连接状态"><br>
+      <sub><b>设置与连接状态</b><br>三档外观、中英切换与服务端能力查看</sub>
+    </td>
+    <td align="center" width="33.3%">
+      <img src="./assets/screenshots/provider-editor.jpg" width="96%" alt="模型供应商配置"><br>
+      <sub><b>模型供应商配置</b><br>API 密钥只写存储、模型发现与自定义路由</sub>
+    </td>
+  </tr>
+</table>
 
 ## 下载与安装
 
@@ -74,16 +156,16 @@ DeepSeek-Harness-v1.2.0.apk
 - 查看设备有权访问的 DSH 会话和实时运行状态。
 - 以流式增量显示助手正文和思考，结束后与服务器历史校准。
 - 正确排版 Markdown 标题、列表、引用、代码块和表格。
-- 发送文字与图片附件，管理排队消息（编辑、删除或插队引导），以及取消当前任务。
+- 发送文字、相机拍照与相册图片附件，管理排队消息（编辑、删除或插队引导），以及取消当前任务。
 - 查看 DSH TODO 模块、完成进度和正在处理的事项。
-- 输入 `/` 浏览并执行服务器提供的 host 斜杠命令。
-- 在输入区按服务器权限目录切换“只读”“工作区写入”“完整访问”。完整访问会再次提示风险。
+- 输入 `/` 或点击命令按钮浏览并执行服务器提供的 host 斜杠命令。
+- 在 `+` 面板按服务器权限目录切换“只读”“工作区写入”“完整访问”。完整访问会再次提示风险。
 - 查看待审批工具调用的脱敏信息，选择“允许一次”或“拒绝”，并在任务发起交互提问时直接作答。
 - 切换模型和思考强度。空白会话还可以在首条消息前选择 Agent。
 
 ## 工作区与会话
 
-新建会话时，可以选择 DSH WebUI 已登记的工作区，也可以从设备获准访问的根目录中挑选一个现有目录，将它登记为新的 DSH 工作区。
+在主页可直接选择已登记的 DSH WebUI 工作区并发送消息自动开始新会话；也可以在新建会话面板中从设备获准访问的根目录挑选现有目录，将它登记为新的 DSH 工作区。
 
 工作区页支持：
 
@@ -92,7 +174,7 @@ DeepSeek-Harness-v1.2.0.apk
 
 移除登记不会删除服务器目录、文件或会话日志。
 
-会话列表支持按状态与工作区筛选，以及服务端全文搜索。每个会话的菜单支持：
+左侧导航抽屉集中提供对话、工作区、Code 文件与设置入口，支持服务端会话全文搜索与归档视图切换。每个会话的菜单支持：
 
 - **置顶 / 取消置顶**：将常用会话固定在列表顶部。
 - **重命名**：修改 DSH WebUI 中显示的标题。

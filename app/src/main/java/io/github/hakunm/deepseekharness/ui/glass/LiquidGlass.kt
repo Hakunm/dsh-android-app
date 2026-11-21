@@ -386,20 +386,21 @@ fun CompactSearchPill(
     val palette = LocalGlassPalette.current
     Row(
         modifier = modifier
-            .height(30.dp)
+            .height(36.dp)
             .clip(CircleShape)
-            .background(palette.searchBackground, CircleShape)
-            .padding(horizontal = 11.dp),
+            .background(palette.pillBackground, CircleShape)
+            .padding(horizontal = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(7.dp),
     ) {
+        Icon(Icons.Outlined.Search, null, Modifier.size(15.5.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         Box(Modifier.weight(1f), contentAlignment = Alignment.CenterStart) {
             if (query.isEmpty()) {
                 Text(
                     placeholder,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    fontSize = 12.sp,
-                    lineHeight = 15.sp,
+                    fontSize = 13.sp,
+                    lineHeight = 17.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -408,8 +409,8 @@ fun CompactSearchPill(
                 value = query,
                 onValueChange = onQueryChange,
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodySmall.copy(
-                    fontSize = 12.sp,
+                textStyle = MaterialTheme.typography.bodyMedium.copy(
+                    fontSize = 13.5.sp,
                     color = MaterialTheme.colorScheme.onSurface,
                 ),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
@@ -419,19 +420,17 @@ fun CompactSearchPill(
             )
         }
         if (searching) {
-            CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.6.dp)
+            CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 1.6.dp)
         } else if (query.isNotEmpty()) {
             Box(
                 modifier = Modifier
-                    .size(20.dp)
+                    .size(22.dp)
                     .clickable(onClick = onClear)
                     .semantics { contentDescription = clearContentDescription },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.Close, clearContentDescription, Modifier.size(13.5.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Outlined.Close, clearContentDescription, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
-        } else {
-            Icon(Icons.Outlined.Search, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
@@ -503,7 +502,7 @@ fun CompactSegmentedControl(
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    height: Dp = 30.dp,
+    height: Dp = 36.dp,
 ) {
     if (items.isEmpty()) return
     val palette = LocalGlassPalette.current
@@ -513,8 +512,8 @@ fun CompactSegmentedControl(
             .fillMaxWidth()
             .height(height)
             .clip(CircleShape)
-            .background(palette.searchBackground, CircleShape)
-            .padding(2.5.dp),
+            .background(palette.pillBackground, CircleShape)
+            .padding(3.dp),
     ) {
         val segmentWidth = maxWidth / items.size
         val density = LocalDensity.current
@@ -531,7 +530,7 @@ fun CompactSegmentedControl(
                 .fillMaxHeight()
                 .clip(CircleShape)
                 .background(
-                    if (dark) Color(0xFF283140) else Color.White,
+                    if (dark) Color(0xFF343430) else Color.White,
                     CircleShape,
                 ),
         )

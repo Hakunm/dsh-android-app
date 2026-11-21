@@ -1,5 +1,10 @@
 # 开发日志
 
+## 2026-11-22 · v1.2.0
+
+- 完成 `UI-005` 极简双模式重构：采用清透冰瓷（`#F6F8FB` 浅色）与静谧夜枭（`#171715` 深色）自动跟随系统双模式色板，重构为左侧无框侧滑抽屉、留白对话主页、底部悬浮胶囊输入栏、`+` 圆角操作面板、无框 Markdown 对话流与分组圆角卡片设置页；通过 `docsCheck testDebugUnitTest lintDebug connectedDebugAndroidTest assembleRelease` 全量校验。
+- 完成 `REL-005` 文档与正式包更新：在 MuMu Android 15 上运行正式签名 Release APK 采集 15 张全流程界面截图，按 5 大功能主题三列图文排版更新 `README.md` 与 `README.en.md`，并更新正式签名 APK（2,671,240 字节，SHA-256 `10EFF263ED18F3ABD6CE2BA92EC9305522B52DBAD5EA66E03D437FAD61FF975A`）。
+
 ## 2026-11-21 · v1.2.0
 
 - 完成 `COMPAT-001`：适配 DeepSeek Harness `0.2.x` 与 `dsh-workspace@1.2.0`，新增 `HistoryEntrySerializer` 兼容裸 `SessionWireEvent` 历史、`AgentPreset` 缺省字段安全默认值、对象参数工具摘要、`agent/assistant-stream` 流式增量与标题保留，并修复启动恢复遇到临时网络错误时误清本机令牌的问题。

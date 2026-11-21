@@ -1,68 +1,32 @@
 # DeepSeek Harness Android Design System
 
-This file is the persistent visual source of truth. The reference APKS was used only to study hierarchy, spacing, navigation and motion; DeepSeek Harness keeps its own name, whale mark, colors and implementation.
+This file is the persistent visual source of truth for `dsh-android-app`.
 
 ## Direction
 
-- Product: mobile AI coding client and file workspace.
-- Style: warm, editorial, content-first, low chrome and work-focused.
-- Density: compact-balanced; chat favors visible content while controls remain comfortably touchable.
-- Corners: 4-8dp only. Cards are reserved for true repeated items, dialogs and framed editors.
+- Product: mobile AI coding companion and authorized-root file workspace for DeepSeek Harness.
+- Style: calm 90%+ negative space, borderless top chrome, grouped rounded cards, monochrome outline iconography, and Dual-Mode automatic system theme (`ThemeMode.SYSTEM`).
+- Density: crisp `390dp`-normalized mobile proportion (`14sp` chat prose, `15sp` setting rows, `46dp` top bar, `48dp` floating capsule composer).
 
-## Color
+## Color Tokens
 
-| Role | Light | Dark |
+| Role | Light (Crisp Porcelain · 清透冰瓷) | Dark (Quiet Night Owl · 静谧夜枭) |
 | --- | --- | --- |
-| Background | `#F9F9F7` | `#181816` |
-| Surface variant | `#F0EFEC` | `#2A2A27` |
-| Primary text/action | `#131313` | `#F3F2ED` |
-| Secondary action | `#006A60` | `#83D5C8` |
-| Tertiary warning | `#C6613F` | `#FFB59B` |
-| Muted text | `#74726D` | `#BEBBB3` |
+| Primary canvas | `#F6F8FB` | `#171715` |
+| Grouped settings / sheet canvas | `#EEF2F7` / `#EFF3F8` | `#141412` / `#1E1E1C` |
+| Navigation drawer surface | `#F5F8FC` | `#1B1B19` |
+| Grouped card surface | `#FFFFFF` | `#232320` |
+| Pill / user bubble surface | `#E8EEF6` | `#262623` |
+| Primary text | `#0F172A` | `#F2F0EA` |
+| Secondary text | `#475569` | `#B5B1A8` |
+| Primary pill CTA | `#0F172A` (fg `#FFFFFF`) | `#F2F0EA` (fg `#141413`) |
+| Brand whale & accent | `#2563EB` | `#E8E5DC` (whale) / `#4C8BF5` (accent) |
+| Hairline divider | `#E2E8F0` | `#2F2F2B` |
 
-Purple is not a product color. Components consume Material 3 semantic tokens from `Theme.kt`; screens do not invent local palettes.
+## Layout & Navigation
 
-## Typography
-
-- Display and screen headings use the platform serif family at 20-29sp.
-- Product title, controls and body use the platform sans family at 12-18sp.
-- Primary chat copy is 15sp with 22sp line height; secondary labels are 12-14sp. Letter spacing is always 0sp.
-- Markdown establishes hierarchy with typography and spacing, not nested cards.
-
-## Layout
-
-- Mobile navigation uses a modal drawer so conversation content owns the bottom edge.
-- Wide layouts use a stable fixed sidebar and two-pane chat/file views where useful.
-- Repeated settings, sessions and files are full-width rows separated by subtle dividers.
-- Creation, model choice and provider editing use Material 3 modal bottom sheets.
-- Icon controls are at least 48dp touch targets; the circular send action is 44dp with surrounding spacing.
-- Activity `adjustResize` exposes the IME height. `Scaffold` content consumes padding it has already applied, then the chat column applies only the remaining IME inset; this keeps the composer just above the keyboard without duplicate blank space. Constrained row weights prevent overlap on narrow screens.
-- The chat composer uses a 44dp text area and compact surrounding padding; send and navigation actions retain their 44/48dp touch targets.
-
-## Motion
-
-- Screen changes use 180-260ms fade and short spatial slide transitions.
-- Bottom sheets and drawers use Material motion supplied by Compose.
-- Press feedback changes color/elevation without resizing layout.
-- No autoplaying or decorative animation; reduced-motion platform behavior remains authoritative.
-
-## Interaction
-
-- Errors appear in a Snackbar and never interrupt streaming with a modal dialog.
-- Rapid WebSocket events are coalesced; loading indicators reflect real work without layout shifts.
-- Standalone icons have localized content descriptions and unfamiliar actions have tooltips.
-- Disabled state is visible but labels remain legible in light and dark themes.
-
-## Forbidden
-
-- No copied third-party trademarks, icons, fonts or assets.
-- No bottom navigation, oversized dashboard cards, purple/blue gradients, decorative blobs or emoji icons.
-- No raw event JSON in chat, raw Markdown markers in assistant content or secrets echoed into forms.
-- No hard-coded colors in screen components and no shapes above 8dp.
-
-## Pre-Delivery
-
-- Verify 360dp/412dp phones and a wide viewport with no clipped text or controls.
-- Verify default Chinese and English, light/dark themes, font scaling, keyboard and system back.
-- Verify drawer, sheets, model picker, provider form, file actions and Snackbar touch targets.
-- Install the signed release APK and inspect screenshots plus UI hierarchy after every visual refactor.
+- Mobile navigation uses a borderless left `ModalNavigationDrawer` (`86%` width, `22dp` right corners) with DeepSeek wordmark, 4 primary destinations (`Chats / Workspaces / Code / Connection & Settings`), full-text session search, single-line recent sessions, and a pinned bottom `+ New chat` pill CTA.
+- Wide layouts (`>= 840dp`) render a persistent `284dp` navigation rail alongside the active workspace pane.
+- Conversation assistant Markdown renders directly on the calm canvas without card boxes; reasoning/context blocks use single-line collapsible headers with a `2dp` vertical rule when expanded; tool calls render as compact pills.
+- Secondary input controls (camera, gallery photos, workspace files, workspace target, model/thinking effort, sandbox access mode) live inside the `+` `ModalBottomSheet` (`28dp` top corners).
+- Grouped settings, workspaces, and file lists use `18dp` rounded cards with `18–19dp` monochrome outline icons.

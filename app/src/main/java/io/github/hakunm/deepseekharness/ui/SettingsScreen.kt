@@ -16,12 +16,13 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.imePadding
+import androidx.compose.foundation.layout.navigationBarsPadding
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.statusBarsPadding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.outlined.KeyboardArrowRight
@@ -34,7 +35,7 @@ import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.DeleteOutline
 import androidx.compose.material.icons.outlined.Extension
 import androidx.compose.material.icons.outlined.Key
-import androidx.compose.material.icons.outlined.LightMode
+import androidx.compose.material.icons.outlined.Language
 import androidx.compose.material.icons.outlined.Link
 import androidx.compose.material.icons.outlined.ModelTraining
 import androidx.compose.material.icons.outlined.PhoneAndroid
@@ -49,7 +50,6 @@ import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
@@ -68,9 +68,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
-import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
-import com.kyant.shapes.RoundedRectangle
 import io.github.hakunm.deepseekharness.BuildConfig
 import io.github.hakunm.deepseekharness.HarnessState
 import io.github.hakunm.deepseekharness.HarnessViewModel
@@ -81,180 +79,128 @@ import io.github.hakunm.deepseekharness.data.ProviderModel
 import io.github.hakunm.deepseekharness.data.ProviderPatch
 import io.github.hakunm.deepseekharness.data.ProviderView
 import io.github.hakunm.deepseekharness.ui.glass.CompactSegmentedControl
-import io.github.hakunm.deepseekharness.ui.glass.CrispCard
-import io.github.hakunm.deepseekharness.ui.glass.SquircleIconBadge
 import io.github.hakunm.deepseekharness.ui.theme.LocalGlassPalette
-import io.github.hakunm.deepseekharness.ui.theme.LocalIsDarkGlass
 
+/**
+ * Approved Prototype Screen 6:
+ * Grouped 18dp rounded cards on calm #EEF2F7 / #141412 settings canvas,
+ * monochrome 18dp outline icons, and smooth System / Porcelain / Night Owl switcher.
+ */
 @OptIn(ExperimentalLayoutApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
     state: HarnessState,
     viewModel: HarnessViewModel,
-    bottomDockInset: Dp = 0.dp,
+    onOpenDrawer: (() -> Unit)? = null,
 ) {
     var editedProvider by remember { mutableStateOf<ProviderView?>(null) }
     var creatingProvider by remember { mutableStateOf(false) }
     val scopes = state.device?.scopes.orEmpty()
     val palette = LocalGlassPalette.current
-    val dark = LocalIsDarkGlass.current
 
-    Column(Modifier.fillMaxSize()) {
-        // Seamless White/Dark Top Header
-        Row(
-            Modifier
-                .fillMaxWidth()
-                .background(palette.headerBackground)
-                .statusBarsPadding()
-                .padding(horizontal = 12.dp, vertical = 7.dp),
-            verticalAlignment = Alignment.CenterVertically,
-        ) {
-            Text(
-                stringResource(R.string.settings),
-                modifier = Modifier.weight(1f),
-                style = MaterialTheme.typography.headlineMedium,
-            )
-            IconButton(
-                onClick = { viewModel.setThemeMode(if (dark) ThemeMode.LIGHT else ThemeMode.DARK) },
-                modifier = Modifier.size(28.dp),
-            ) {
-                Icon(
-                    if (dark) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
-                    stringResource(R.string.appearance),
-                    Modifier.size(17.5.dp),
-                )
-            }
-            IconButton(
-                onClick = viewModel::refreshDashboard,
-                modifier = Modifier.size(28.dp),
-            ) {
-                Icon(Icons.Outlined.Refresh, stringResource(R.string.refresh), Modifier.size(17.5.dp))
-            }
-        }
+    Column(
+        Modifier
+            .fillMaxSize()
+            .background(palette.settingsCanvas),
+    ) {
+        MinimalTopBar(
+            title = stringResource(R.string.settings),
+            backgroundColor = palette.settingsCanvas,
+            onNavigationClick = onOpenDrawer,
+            trailing = {
+                TopBarIconAction(
+                    onClick = viewModel::refreshDashboard,
+                    contentDescription = stringResource(R.string.refresh),
+                ) {
+                    Icon(
+                        Icons.Outlined.Refresh,
+                        contentDescription = stringResource(R.string.refresh),
+                        modifier = Modifier.size(19.dp),
+                        tint = MaterialTheme.colorScheme.onBackground,
+                    )
+                }
+            },
+        )
 
         Column(
             modifier = Modifier
                 .fillMaxSize()
+                .navigationBarsPadding()
                 .verticalScroll(rememberScrollState())
-                .padding(horizontal = 8.dp, vertical = 7.dp),
+                .padding(horizontal = 14.dp, vertical = 8.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             Column(
-                modifier = Modifier.fillMaxWidth().widthIn(max = 640.dp),
-                verticalArrangement = Arrangement.spacedBy(10.dp),
+                modifier = Modifier.fillMaxWidth().widthIn(max = 600.dp),
+                verticalArrangement = Arrangement.spacedBy(16.dp),
             ) {
-                // Appearance & Language Card
+                // Appearance & Language Grouped Card
                 SectionPanel(R.string.appearance) {
-                    Column(
-                        Modifier.fillMaxWidth().padding(10.dp),
-                        verticalArrangement = Arrangement.spacedBy(7.dp),
-                    ) {
-                        CompactSegmentedControl(
-                            items = listOf(
-                                stringResource(R.string.theme_system),
-                                stringResource(R.string.theme_light),
-                                stringResource(R.string.theme_dark),
-                            ),
-                            selectedIndex = when (state.themeMode) {
-                                ThemeMode.SYSTEM -> 0
-                                ThemeMode.LIGHT -> 1
-                                ThemeMode.DARK -> 2
-                            },
-                            onSelect = { idx ->
-                                viewModel.setThemeMode(
-                                    when (idx) {
-                                        1 -> ThemeMode.LIGHT
-                                        2 -> ThemeMode.DARK
-                                        else -> ThemeMode.SYSTEM
-                                    },
-                                )
-                            },
-                        )
-                        val english = AppCompatDelegate.getApplicationLocales().toLanguageTags().startsWith("en")
-                        CompactSegmentedControl(
-                            items = listOf(
-                                stringResource(R.string.chinese),
-                                stringResource(R.string.english),
-                            ),
-                            selectedIndex = if (english) 1 else 0,
-                            onSelect = { idx -> if ((idx == 1) != english) toggleLanguage() },
-                        )
-                    }
-                }
-
-                // Model Providers Card
-                SectionPanel(
-                    title = R.string.model_providers,
-                    trailing = {
-                        if (state.providerSettings?.customProvider?.available == true) {
-                            val canAdd = "settings.write" in scopes && state.providerSettings.writable
+                    Column(Modifier.fillMaxWidth()) {
+                        Column(
+                            Modifier
+                                .fillMaxWidth()
+                                .padding(horizontal = 16.dp, vertical = 13.dp),
+                            verticalArrangement = Arrangement.spacedBy(10.dp),
+                        ) {
                             Row(
-                                modifier = Modifier
-                                    .clickable(enabled = canAdd) { creatingProvider = true }
-                                    .padding(horizontal = 4.dp, vertical = 1.dp),
                                 verticalAlignment = Alignment.CenterVertically,
-                                horizontalArrangement = Arrangement.spacedBy(2.dp),
+                                horizontalArrangement = Arrangement.spacedBy(12.dp),
                             ) {
-                                Icon(Icons.Outlined.Add, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
+                                Icon(
+                                    Icons.Outlined.DarkMode,
+                                    contentDescription = null,
+                                    modifier = Modifier.size(19.dp),
+                                    tint = MaterialTheme.colorScheme.onBackground,
+                                )
                                 Text(
-                                    stringResource(R.string.add_custom_provider),
-                                    color = MaterialTheme.colorScheme.primary,
-                                    style = MaterialTheme.typography.labelSmall,
+                                    stringResource(R.string.appearance),
+                                    style = MaterialTheme.typography.titleMedium,
                                 )
                             }
-                        }
-                    },
-                ) {
-                    when {
-                        "settings.read" !in scopes -> {
-                            Box(Modifier.padding(10.dp)) {
-                                WarningBanner(stringResource(R.string.settings_permission_required))
-                            }
-                        }
-
-                        state.providerSettings == null -> {
-                            Row(
-                                Modifier.fillMaxWidth().height(60.dp),
-                                horizontalArrangement = Arrangement.Center,
-                                verticalAlignment = Alignment.CenterVertically,
-                            ) { CircularProgressIndicator(Modifier.size(17.dp), strokeWidth = 1.8.dp) }
-                        }
-
-                        else -> {
-                            Column(Modifier.fillMaxWidth()) {
-                                state.providerSettings.providers.forEachIndexed { index, provider ->
-                                    ProviderRow(
-                                        provider = provider,
-                                        index = index,
-                                        canEdit = "settings.write" in scopes && state.providerSettings.writable && provider.configurable,
-                                        onClick = {
-                                            viewModel.clearDiscoveredModels()
-                                            editedProvider = provider
+                            CompactSegmentedControl(
+                                items = listOf(
+                                    stringResource(R.string.theme_system),
+                                    stringResource(R.string.theme_light),
+                                    stringResource(R.string.theme_dark),
+                                ),
+                                selectedIndex = when (state.themeMode) {
+                                    ThemeMode.SYSTEM -> 0
+                                    ThemeMode.LIGHT -> 1
+                                    ThemeMode.DARK -> 2
+                                },
+                                onSelect = { idx ->
+                                    viewModel.setThemeMode(
+                                        when (idx) {
+                                            1 -> ThemeMode.LIGHT
+                                            2 -> ThemeMode.DARK
+                                            else -> ThemeMode.SYSTEM
                                         },
                                     )
-                                    if (index != state.providerSettings.providers.lastIndex) {
-                                        HorizontalDivider(Modifier.padding(start = 48.dp), color = palette.divider)
-                                    }
-                                }
-                                Text(
-                                    stringResource(R.string.provider_secret_note),
-                                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 7.dp),
-                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    style = MaterialTheme.typography.labelSmall,
-                                )
-                            }
+                                },
+                            )
                         }
+
+                        HorizontalDivider(Modifier.padding(start = 48.dp), color = palette.divider)
+
+                        val english = AppCompatDelegate.getApplicationLocales().toLanguageTags().startsWith("en")
+                        SettingRow(
+                            icon = Icons.Outlined.Language,
+                            title = stringResource(R.string.language),
+                            value = stringResource(if (english) R.string.english else R.string.chinese),
+                            onClick = ::toggleLanguage,
+                            showChevron = true,
+                        )
                     }
                 }
 
-                // Connection & Capabilities Card
+                // Connection & Capabilities Grouped Card
                 SectionPanel(R.string.connection) {
                     Column(Modifier.fillMaxWidth()) {
                         SettingRow(
                             icon = Icons.Outlined.CloudDone,
                             title = stringResource(R.string.endpoint),
                             value = state.endpoint,
-                            iconStartColor = palette.accentJade,
                         ) {
                             StatusPill(
                                 stringResource(if (state.eventsConnected) R.string.online else R.string.connected),
@@ -267,49 +213,112 @@ fun SettingsScreen(
                                 icon = Icons.Outlined.Extension,
                                 title = stringResource(R.string.server_version),
                                 value = "dsh-workspace v$pluginVer",
-                                iconStartColor = palette.accentBlue,
                             )
                         }
                         if (state.capabilities.isNotEmpty()) {
                             HorizontalDivider(Modifier.padding(start = 48.dp), color = palette.divider)
-                            Column(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp)) {
+                            Column(Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp)) {
                                 Text(
                                     stringResource(R.string.server_capabilities),
-                                    style = MaterialTheme.typography.labelSmall,
+                                    style = MaterialTheme.typography.labelMedium,
                                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.padding(bottom = 5.dp),
+                                    modifier = Modifier.padding(bottom = 8.dp),
                                 )
                                 FlowRow(
-                                    horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                    verticalArrangement = Arrangement.spacedBy(5.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    verticalArrangement = Arrangement.spacedBy(6.dp),
                                 ) {
                                     state.capabilities.forEach { cap -> SmallTagPill(cap) }
                                 }
                             }
                         }
                         if (state.endpoint.startsWith("http://")) {
-                            Box(Modifier.padding(horizontal = 12.dp, vertical = 7.dp)) {
+                            Box(Modifier.padding(horizontal = 16.dp, vertical = 10.dp)) {
                                 WarningBanner(stringResource(R.string.http_warning))
                             }
                         }
                     }
                 }
 
-                // Device & Permissions Card
+                // Model Providers Grouped Card
+                SectionPanel(
+                    title = R.string.model_providers,
+                    trailing = {
+                        if (state.providerSettings?.customProvider?.available == true) {
+                            val canAdd = "settings.write" in scopes && state.providerSettings.writable
+                            Row(
+                                modifier = Modifier
+                                    .clickable(enabled = canAdd) { creatingProvider = true }
+                                    .padding(horizontal = 4.dp, vertical = 2.dp),
+                                verticalAlignment = Alignment.CenterVertically,
+                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                            ) {
+                                Icon(Icons.Outlined.Add, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.primary)
+                                Text(
+                                    stringResource(R.string.add_custom_provider),
+                                    color = MaterialTheme.colorScheme.primary,
+                                    style = MaterialTheme.typography.labelMedium,
+                                )
+                            }
+                        }
+                    },
+                ) {
+                    when {
+                        "settings.read" !in scopes -> {
+                            Box(Modifier.padding(14.dp)) {
+                                WarningBanner(stringResource(R.string.settings_permission_required))
+                            }
+                        }
+
+                        state.providerSettings == null -> {
+                            Row(
+                                Modifier.fillMaxWidth().height(64.dp),
+                                horizontalArrangement = Arrangement.Center,
+                                verticalAlignment = Alignment.CenterVertically,
+                            ) { CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 1.8.dp) }
+                        }
+
+                        else -> {
+                            Column(Modifier.fillMaxWidth()) {
+                                state.providerSettings.providers.forEachIndexed { index, provider ->
+                                    ProviderRow(
+                                        provider = provider,
+                                        canEdit = "settings.write" in scopes && state.providerSettings.writable && provider.configurable,
+                                        onClick = {
+                                            viewModel.clearDiscoveredModels()
+                                            editedProvider = provider
+                                        },
+                                    )
+                                    if (index != state.providerSettings.providers.lastIndex) {
+                                        HorizontalDivider(Modifier.padding(start = 48.dp), color = palette.divider)
+                                    }
+                                }
+                                HorizontalDivider(color = palette.divider)
+                                Text(
+                                    stringResource(R.string.provider_secret_note),
+                                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp),
+                                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                                    style = MaterialTheme.typography.labelSmall,
+                                )
+                            }
+                        }
+                    }
+                }
+
+                // Current Device & Scopes Card
                 SectionPanel(R.string.device) {
                     Column(Modifier.fillMaxWidth()) {
                         SettingRow(
                             icon = Icons.Outlined.PhoneAndroid,
                             title = state.device?.name.orEmpty(),
                             value = state.device?.id.orEmpty(),
-                            iconStartColor = palette.accentCyan,
                         )
                         if (scopes.isNotEmpty()) {
                             HorizontalDivider(Modifier.padding(start = 48.dp), color = palette.divider)
                             FlowRow(
-                                modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
-                                horizontalArrangement = Arrangement.spacedBy(5.dp),
-                                verticalArrangement = Arrangement.spacedBy(5.dp),
+                                modifier = Modifier.fillMaxWidth().padding(horizontal = 16.dp, vertical = 12.dp),
+                                horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                verticalArrangement = Arrangement.spacedBy(6.dp),
                             ) {
                                 scopes.forEach { scope -> SmallTagPill(scope) }
                             }
@@ -324,33 +333,29 @@ fun SettingsScreen(
                             icon = Icons.Outlined.Code,
                             title = stringResource(R.string.author),
                             value = stringResource(R.string.author_value),
-                            iconStartColor = palette.accentAmber,
                         )
                         HorizontalDivider(Modifier.padding(start = 48.dp), color = palette.divider)
                         SettingRow(
                             icon = Icons.Outlined.CheckCircle,
                             title = stringResource(R.string.version),
                             value = "v${BuildConfig.VERSION_NAME}",
-                            iconStartColor = palette.accentIndigo,
                         )
                     }
                 }
 
-                // Clean Destructive Action Card
-                CrispCard(
+                // Clean Rounded Destructive Card
+                GroupedCard(
                     modifier = Modifier.fillMaxWidth(),
-                    cornerRadius = 10.dp,
-                    backgroundColor = palette.dangerTint,
-                    borderColor = Color.Transparent,
+                    cornerRadius = 18.dp,
                     onClick = viewModel::disconnect,
-                    contentPadding = PaddingValues(vertical = 9.dp),
+                    contentPadding = PaddingValues(vertical = 14.dp),
                 ) {
                     Row(
                         Modifier.fillMaxWidth(),
-                        horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
+                        horizontalArrangement = Arrangement.spacedBy(7.dp, Alignment.CenterHorizontally),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
-                        Icon(Icons.Outlined.DeleteForever, null, Modifier.size(15.dp), tint = palette.dangerText)
+                        Icon(Icons.Outlined.DeleteForever, null, Modifier.size(17.dp), tint = palette.dangerText)
                         Text(
                             stringResource(R.string.disconnect),
                             color = palette.dangerText,
@@ -359,7 +364,7 @@ fun SettingsScreen(
                     }
                 }
 
-                Spacer(Modifier.height(bottomDockInset + 8.dp))
+                Spacer(Modifier.height(14.dp))
             }
         }
     }
@@ -373,46 +378,38 @@ fun SettingsScreen(
 }
 
 @Composable
-private fun ProviderRow(provider: ProviderView, index: Int, canEdit: Boolean, onClick: () -> Unit) {
+private fun ProviderRow(provider: ProviderView, canEdit: Boolean, onClick: () -> Unit) {
     val palette = LocalGlassPalette.current
-    val accent = when (index % 4) {
-        0 -> palette.accentJade
-        1 -> palette.accentBlue
-        2 -> palette.accentCyan
-        else -> palette.accentAmber
-    }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(enabled = canEdit, onClick = onClick)
-            .padding(horizontal = 12.dp, vertical = 8.dp),
+            .padding(horizontal = 16.dp, vertical = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SquircleIconBadge(
-            icon = Icons.Outlined.ModelTraining,
-            startColor = if (provider.active || provider.credential.configured) accent else MaterialTheme.colorScheme.outline,
-            size = 26.dp,
-            iconSize = 14.5.dp,
-            cornerRadius = 7.dp,
-            softTint = true,
+        Icon(
+            Icons.Outlined.ModelTraining,
+            contentDescription = null,
+            modifier = Modifier.size(19.dp),
+            tint = MaterialTheme.colorScheme.onBackground,
         )
-        Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
+        Column(Modifier.weight(1f).padding(horizontal = 13.dp)) {
             Row(
                 verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(5.dp),
+                horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 Text(
                     provider.displayName,
                     modifier = Modifier.weight(1f, fill = false),
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.titleSmall,
+                    style = MaterialTheme.typography.titleMedium,
                 )
                 if (provider.active) {
                     SmallTagPill(
                         text = stringResource(R.string.active),
-                        backgroundColor = palette.successTint,
-                        contentColor = palette.successText,
+                        backgroundColor = palette.accentSoft,
+                        contentColor = palette.accentInk,
                     )
                 }
             }
@@ -420,15 +417,15 @@ private fun ProviderRow(provider: ProviderView, index: Int, canEdit: Boolean, on
                 if (provider.credential.configured) stringResource(R.string.credential_configured)
                 else stringResource(R.string.credential_missing),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelSmall,
+                style = MaterialTheme.typography.bodySmall,
             )
             if (!provider.error.isNullOrBlank()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                     modifier = Modifier.padding(top = 2.dp),
                 ) {
-                    Icon(Icons.Outlined.WarningAmber, null, Modifier.size(11.dp), tint = palette.warningText)
+                    Icon(Icons.Outlined.WarningAmber, null, Modifier.size(12.dp), tint = palette.warningText)
                     Text(
                         provider.error,
                         maxLines = 1,
@@ -439,14 +436,11 @@ private fun ProviderRow(provider: ProviderView, index: Int, canEdit: Boolean, on
                 }
             }
         }
-        if (provider.credential.configured) {
-            Icon(Icons.Outlined.CheckCircle, null, Modifier.size(14.dp), tint = palette.successText)
-        }
         if (canEdit) {
             Icon(
                 Icons.AutoMirrored.Outlined.KeyboardArrowRight,
                 null,
-                Modifier.padding(start = 3.dp).size(16.dp),
+                Modifier.padding(start = 4.dp).size(18.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -460,6 +454,7 @@ private fun CustomProviderEditor(
     viewModel: HarnessViewModel,
     onClose: () -> Unit,
 ) {
+    val palette = LocalGlassPalette.current
     val capability = state.providerSettings?.customProvider ?: return
     var id by remember { mutableStateOf("") }
     var displayName by remember { mutableStateOf("") }
@@ -475,13 +470,19 @@ private fun CustomProviderEditor(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedRectangle(18.dp),
+        containerColor = palette.sheetBackground,
+        tonalElevation = 0.dp,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) {
         Column(
-            Modifier.fillMaxWidth().fillMaxHeight(0.88f).verticalScroll(rememberScrollState())
-                .imePadding().padding(horizontal = 15.dp).padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
+            Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.88f)
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(stringResource(R.string.add_custom_provider), style = MaterialTheme.typography.headlineSmall)
             Text(
@@ -511,11 +512,11 @@ private fun CustomProviderEditor(
             Box(Modifier.fillMaxWidth()) {
                 OutlinedButton(
                     onClick = { protocolMenu = true },
-                    modifier = Modifier.fillMaxWidth().height(38.dp),
-                    shape = RoundedRectangle(9.dp),
+                    modifier = Modifier.fillMaxWidth().height(42.dp),
+                    shape = RoundedCornerShape(13.dp),
                 ) {
                     Text(protocol.ifBlank { stringResource(R.string.provider_protocol) }, Modifier.weight(1f), style = MaterialTheme.typography.bodyMedium)
-                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, Modifier.size(16.dp))
+                    Icon(Icons.AutoMirrored.Outlined.KeyboardArrowRight, null, Modifier.size(17.dp))
                 }
                 DropdownMenu(expanded = protocolMenu, onDismissRequest = { protocolMenu = false }) {
                     capability.protocols.forEach { choice ->
@@ -533,12 +534,12 @@ private fun CustomProviderEditor(
             GlassOutlinedField(
                 value = modelIds,
                 onValueChange = { modelIds = it },
-                modifier = Modifier.height(104.dp),
+                modifier = Modifier.height(108.dp),
                 label = stringResource(R.string.model_ids),
                 supportingText = stringResource(R.string.model_ids_required_hint),
                 singleLine = false,
             )
-            Button(
+            PrimaryPillButton(
                 onClick = {
                     viewModel.createCustomProvider(
                         CustomProviderCreate(
@@ -554,9 +555,10 @@ private fun CustomProviderEditor(
                     onClose()
                 },
                 enabled = ready && !state.busy,
-                modifier = Modifier.fillMaxWidth().height(38.dp),
-                shape = CircleShape,
-            ) { Text(stringResource(R.string.create_provider), style = MaterialTheme.typography.labelLarge) }
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.create_provider), style = MaterialTheme.typography.labelLarge)
+            }
         }
     }
 }
@@ -569,6 +571,7 @@ private fun ProviderEditor(
     provider: ProviderView,
     onClose: () -> Unit,
 ) {
+    val palette = LocalGlassPalette.current
     var displayName by remember(provider.id) { mutableStateOf(provider.config.displayName ?: provider.displayName) }
     var baseUrl by remember(provider.id) { mutableStateOf(provider.config.baseURL.orEmpty()) }
     var protocol by remember(provider.id) { mutableStateOf(provider.config.api.orEmpty()) }
@@ -580,13 +583,19 @@ private fun ProviderEditor(
     ModalBottomSheet(
         onDismissRequest = onClose,
         sheetState = sheetState,
-        containerColor = MaterialTheme.colorScheme.surface,
-        shape = RoundedRectangle(18.dp),
+        containerColor = palette.sheetBackground,
+        tonalElevation = 0.dp,
+        shape = RoundedCornerShape(topStart = 28.dp, topEnd = 28.dp),
     ) {
         Column(
-            Modifier.fillMaxWidth().fillMaxHeight(0.88f).verticalScroll(rememberScrollState())
-                .imePadding().padding(horizontal = 15.dp).padding(bottom = 20.dp),
-            verticalArrangement = Arrangement.spacedBy(9.dp),
+            Modifier
+                .fillMaxWidth()
+                .fillMaxHeight(0.88f)
+                .verticalScroll(rememberScrollState())
+                .imePadding()
+                .padding(horizontal = 16.dp)
+                .padding(bottom = 24.dp),
+            verticalArrangement = Arrangement.spacedBy(10.dp),
         ) {
             Text(provider.displayName, style = MaterialTheme.typography.headlineSmall)
             Text(provider.id, color = MaterialTheme.colorScheme.onSurfaceVariant, style = MaterialTheme.typography.labelSmall)
@@ -622,16 +631,14 @@ private fun ProviderEditor(
                 visualTransformation = PasswordVisualTransformation(),
             )
             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.End) {
-                OutlinedButton(
+                SecondaryPillButton(
                     onClick = { viewModel.discoverModels(provider.id, baseUrl, protocol, apiKey) },
                     enabled = !state.busy,
-                    modifier = Modifier.height(32.dp),
-                    contentPadding = PaddingValues(horizontal = 11.dp),
-                    shape = CircleShape,
+                    height = 34.dp,
                 ) {
-                    if (state.busy) CircularProgressIndicator(Modifier.padding(end = 5.dp).size(12.dp), strokeWidth = 1.8.dp)
-                    Icon(Icons.Outlined.ModelTraining, null, Modifier.size(14.dp))
-                    Text(stringResource(R.string.discover_models), Modifier.padding(start = 5.dp), style = MaterialTheme.typography.labelSmall)
+                    if (state.busy) CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.8.dp)
+                    else Icon(Icons.Outlined.ModelTraining, null, Modifier.size(14.dp))
+                    Text(stringResource(R.string.discover_models), style = MaterialTheme.typography.labelMedium)
                 }
             }
             if (discovered.isNotEmpty()) {
@@ -653,7 +660,7 @@ private fun ProviderEditor(
             GlassOutlinedField(
                 value = modelIds,
                 onValueChange = { modelIds = it },
-                modifier = Modifier.height(104.dp),
+                modifier = Modifier.height(108.dp),
                 label = stringResource(R.string.model_ids),
                 supportingText = stringResource(
                     if (provider.config.modelsInherited) R.string.inherited_model_ids_hint
@@ -661,7 +668,7 @@ private fun ProviderEditor(
                 ),
                 singleLine = false,
             )
-            Button(
+            PrimaryPillButton(
                 onClick = {
                     viewModel.updateProvider(
                         provider.id,
@@ -679,9 +686,10 @@ private fun ProviderEditor(
                     onClose()
                 },
                 enabled = !state.busy,
-                modifier = Modifier.fillMaxWidth().height(38.dp),
-                shape = CircleShape,
-            ) { Text(stringResource(R.string.save_provider), style = MaterialTheme.typography.labelLarge) }
+                modifier = Modifier.fillMaxWidth(),
+            ) {
+                Text(stringResource(R.string.save_provider), style = MaterialTheme.typography.labelLarge)
+            }
 
             if (provider.removable) {
                 TextButton(
@@ -690,8 +698,8 @@ private fun ProviderEditor(
                     colors = ButtonDefaults.textButtonColors(contentColor = MaterialTheme.colorScheme.error),
                     modifier = Modifier.fillMaxWidth(),
                 ) {
-                    Icon(Icons.Outlined.DeleteOutline, null, Modifier.size(15.dp))
-                    Text(stringResource(R.string.remove_provider), Modifier.padding(start = 4.dp), style = MaterialTheme.typography.labelMedium)
+                    Icon(Icons.Outlined.DeleteOutline, null, Modifier.size(16.dp))
+                    Text(stringResource(R.string.remove_provider), Modifier.padding(start = 5.dp), style = MaterialTheme.typography.labelMedium)
                 }
             }
         }

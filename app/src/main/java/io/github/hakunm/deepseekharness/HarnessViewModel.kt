@@ -512,6 +512,69 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
         copy(pendingImages = pendingImages.filterNot { it.id == id })
     }
 
+    fun sendFromHome(
+        workspaceId: String?,
+        preset: String?,
+        text: String,
+        initialPermission: String? = null,
+    ) = withClient { api ->
+        val images = mutableState.value.pendingImages
+        if (text.isBlank() && images.isEmpty()) return@withClient
+        val wsId = workspaceId?.takeIf(String::isNotBlank)
+            ?: mutableState.value.chatWorkspaces.firstOrNull()?.id
+            ?: return@withClient
+        val created = api.createSession(wsId, preset?.takeIf(String::isNotBlank))
+        if (!initialPermission.isNullOrBlank()) {
+            runCatching { api.executeCommand(created.id, "/permission $initialPermission") }
+        }
+        val models = runCatching { api.sessionModels(created.id) }.getOrNull()
+        val commands = runCatching { api.sessionCommands(created.id) }.getOrDefault(emptyList())
+        val line = text.trimEnd()
+        if (images.isEmpty() && line.startsWith('/')) {
+            val execution = api.executeCommand(created.id, line)
+            if (execution.result.kind == "error") {
+                throw DshApiException(409, "COMMAND_FAILED", execution.result.text ?: "Command failed.")
+            }
+            val history = api.history(created.id)
+            val sessions = api.sessions(mutableState.value.showArchived)
+            update {
+                copy(
+                    sessions = sessions.preservingTitles(this.sessions).withSessionHistory(created.id, history),
+                    selectedSessionId = created.id,
+                    history = history,
+                    sessionModels = models,
+                    sessionState = null,
+                    commands = commands,
+                    pendingImages = emptyList(),
+                    approvalState = ApprovalUiState.None,
+                    questionState = QuestionUiState.None,
+                    liveChat = null,
+                )
+            }
+            return@withClient
+        }
+        api.sendMessage(created.id, text, false, images.map(PendingImageAttachment::toWire))
+        val history = api.history(created.id)
+        val sessions = api.sessions(mutableState.value.showArchived)
+        update {
+            copy(
+                sessions = sessions.preservingTitles(this.sessions).withSessionHistory(created.id, history),
+                selectedSessionId = created.id,
+                history = history,
+                sessionModels = models,
+                sessionState = null,
+                commands = commands,
+                pendingImages = emptyList(),
+                approvalState = ApprovalUiState.None,
+                questionState = QuestionUiState.None,
+                liveChat = null,
+            )
+        }
+        chatSessionRefreshPending = true
+        scheduleChatRefresh()
+        refreshSessionState()
+    }
+
     fun sendMessage(text: String, steer: Boolean) = withClient { api ->
         val id = mutableState.value.selectedSessionId ?: return@withClient
         val images = mutableState.value.pendingImages
