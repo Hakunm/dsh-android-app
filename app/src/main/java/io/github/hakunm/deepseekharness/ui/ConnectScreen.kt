@@ -2,6 +2,7 @@ package io.github.hakunm.deepseekharness.ui
 
 import android.os.Build
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -31,6 +32,7 @@ import androidx.compose.material.icons.outlined.Refresh
 import androidx.compose.material.icons.outlined.WifiTethering
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
@@ -53,7 +55,6 @@ import io.github.hakunm.deepseekharness.R
 import io.github.hakunm.deepseekharness.ThemeMode
 import io.github.hakunm.deepseekharness.ui.glass.CrispCard
 import io.github.hakunm.deepseekharness.ui.glass.LiquidGlassButton
-import io.github.hakunm.deepseekharness.ui.glass.LiquidGlassIconButton
 import io.github.hakunm.deepseekharness.ui.theme.LocalGlassPalette
 import io.github.hakunm.deepseekharness.ui.theme.LocalIsDarkGlass
 
@@ -64,166 +65,173 @@ fun ConnectScreen(state: HarnessState, viewModel: HarnessViewModel) {
     val palette = LocalGlassPalette.current
     val dark = LocalIsDarkGlass.current
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .navigationBarsPadding()
-            .imePadding()
-            .verticalScroll(rememberScrollState())
-            .padding(horizontal = 14.dp, vertical = 10.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        Column(
-            modifier = Modifier.fillMaxWidth().widthIn(max = 500.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp),
+    Column(Modifier.fillMaxSize()) {
+        // Seamless white/dark header matching main app screens
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(palette.headerBackground)
+                .statusBarsPadding()
+                .padding(horizontal = 14.dp, vertical = 9.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(9.dp),
         ) {
-            // Compact Top Row: Brand + Title + Appearance & Language icons
-            Row(
-                Modifier.fillMaxWidth().padding(vertical = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            BrandMark(size = 28.dp)
+            Column(Modifier.weight(1f)) {
+                Text(
+                    stringResource(R.string.connect_title),
+                    style = MaterialTheme.typography.titleLarge,
+                )
+                Text(
+                    stringResource(R.string.connect_subtitle),
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                    style = MaterialTheme.typography.labelSmall,
+                )
+            }
+            IconButton(
+                onClick = { viewModel.setThemeMode(if (dark) ThemeMode.LIGHT else ThemeMode.DARK) },
+                modifier = Modifier.size(30.dp),
             ) {
-                BrandMark(size = 42.dp)
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.connect_title),
-                        style = MaterialTheme.typography.headlineSmall,
-                    )
-                    Text(
-                        stringResource(R.string.connect_subtitle),
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                        style = MaterialTheme.typography.bodySmall,
+                Icon(
+                    if (dark) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
+                    stringResource(R.string.appearance),
+                    Modifier.size(18.dp),
+                )
+            }
+            IconButton(
+                onClick = ::toggleLanguage,
+                modifier = Modifier.size(30.dp),
+            ) {
+                Icon(Icons.Outlined.Language, stringResource(R.string.language), Modifier.size(18.dp))
+            }
+        }
+
+        Column(
+            modifier = Modifier
+                .fillMaxSize()
+                .navigationBarsPadding()
+                .imePadding()
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 10.dp, vertical = 8.dp),
+            horizontalAlignment = Alignment.CenterHorizontally,
+        ) {
+            Column(
+                modifier = Modifier.fillMaxWidth().widthIn(max = 460.dp),
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+            ) {
+                AnimatedVisibility(visible = state.healthOk) {
+                    val versionSuffix = state.serverPluginVersion?.let { " · v$it" }.orEmpty()
+                    StatusPill(
+                        label = stringResource(R.string.connection_ok) + versionSuffix,
+                        active = true,
                     )
                 }
-                LiquidGlassIconButton(
-                    onClick = { viewModel.setThemeMode(if (dark) ThemeMode.LIGHT else ThemeMode.DARK) },
-                    icon = if (dark) Icons.Outlined.LightMode else Icons.Outlined.DarkMode,
-                    contentDescription = stringResource(R.string.appearance),
-                    size = 34.dp,
-                )
-                LiquidGlassIconButton(
-                    onClick = ::toggleLanguage,
-                    icon = Icons.Outlined.Language,
-                    contentDescription = stringResource(R.string.language),
-                    size = 34.dp,
-                )
-            }
 
-            AnimatedVisibility(visible = state.healthOk) {
-                val versionSuffix = state.serverPluginVersion?.let { " · v$it" }.orEmpty()
-                StatusPill(
-                    label = stringResource(R.string.connection_ok) + versionSuffix,
-                    active = true,
-                )
-            }
+                AnimatedVisibility(visible = state.hasSavedConnection) {
+                    CrispCard(
+                        modifier = Modifier.fillMaxWidth(),
+                        cornerRadius = 10.dp,
+                        contentPadding = PaddingValues(12.dp),
+                    ) {
+                        Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text(
+                                stringResource(R.string.saved_connection_hint),
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                            LiquidGlassButton(
+                                onClick = viewModel::retryRestore,
+                                enabled = !state.busy,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.fillMaxWidth(),
+                                height = 36.dp,
+                            ) {
+                                Icon(Icons.Outlined.Refresh, null, Modifier.size(14.dp))
+                                Text(stringResource(R.string.reconnect), style = MaterialTheme.typography.labelLarge)
+                            }
+                        }
+                    }
+                }
 
-            AnimatedVisibility(visible = state.hasSavedConnection) {
                 CrispCard(
                     modifier = Modifier.fillMaxWidth(),
-                    cornerRadius = 16.dp,
+                    cornerRadius = 10.dp,
                     contentPadding = PaddingValues(12.dp),
                 ) {
-                    Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         Text(
-                            stringResource(R.string.saved_connection_hint),
-                            style = MaterialTheme.typography.bodySmall,
+                            stringResource(R.string.server),
+                            style = MaterialTheme.typography.labelSmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
+                        GlassOutlinedField(
+                            value = state.endpointDraft,
+                            onValueChange = viewModel::setEndpointDraft,
+                            label = stringResource(R.string.server_address),
+                            leadingIcon = Icons.Outlined.Link,
+                            keyboardType = KeyboardType.Uri,
+                        )
+                        if (state.endpointDraft.trim().startsWith("http://")) {
+                            WarningBanner(stringResource(R.string.http_warning))
+                        }
                         LiquidGlassButton(
-                            onClick = viewModel::retryRestore,
-                            enabled = !state.busy,
+                            onClick = { viewModel.testConnection(state.endpointDraft) },
+                            enabled = !state.busy && state.endpointDraft.isNotBlank(),
+                            modifier = Modifier.fillMaxWidth(),
+                            height = 35.dp,
+                        ) {
+                            if (state.busy) {
+                                CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.8.dp)
+                            } else {
+                                Icon(Icons.Outlined.WifiTethering, null, Modifier.size(15.dp))
+                            }
+                            Text(stringResource(R.string.test_connection), style = MaterialTheme.typography.labelLarge)
+                        }
+                    }
+                }
+
+                CrispCard(
+                    modifier = Modifier.fillMaxWidth(),
+                    cornerRadius = 10.dp,
+                    contentPadding = PaddingValues(12.dp),
+                ) {
+                    Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        Text(
+                            stringResource(R.string.device_pairing),
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                        GlassOutlinedField(
+                            value = code,
+                            onValueChange = { code = it },
+                            label = stringResource(R.string.pairing_code),
+                            leadingIcon = Icons.Outlined.Key,
+                        )
+                        GlassOutlinedField(
+                            value = deviceName,
+                            onValueChange = { deviceName = it },
+                            label = stringResource(R.string.device_name),
+                            leadingIcon = Icons.Outlined.PhoneAndroid,
+                        )
+                        LiquidGlassButton(
+                            onClick = { viewModel.pair(state.endpointDraft, code, deviceName) },
+                            enabled = !state.busy && state.endpointDraft.isNotBlank() && code.isNotBlank() && deviceName.isNotBlank(),
                             tint = MaterialTheme.colorScheme.primary,
                             modifier = Modifier.fillMaxWidth(),
-                            height = 40.dp,
+                            height = 38.dp,
                         ) {
-                            Icon(Icons.Outlined.Refresh, null, Modifier.size(16.dp))
-                            Text(stringResource(R.string.reconnect), style = MaterialTheme.typography.labelLarge)
+                            if (state.busy) {
+                                CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 1.8.dp, color = Color.White)
+                            } else {
+                                Icon(Icons.Outlined.CheckCircle, null, Modifier.size(15.dp))
+                            }
+                            Text(stringResource(R.string.connect), style = MaterialTheme.typography.labelLarge)
                         }
                     }
                 }
-            }
 
-            // Compact Server Card
-            CrispCard(
-                modifier = Modifier.fillMaxWidth(),
-                cornerRadius = 16.dp,
-                contentPadding = PaddingValues(14.dp),
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        stringResource(R.string.server),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    GlassOutlinedField(
-                        value = state.endpointDraft,
-                        onValueChange = viewModel::setEndpointDraft,
-                        label = stringResource(R.string.server_address),
-                        leadingIcon = Icons.Outlined.Link,
-                        keyboardType = KeyboardType.Uri,
-                    )
-                    if (state.endpointDraft.trim().startsWith("http://")) {
-                        WarningBanner(stringResource(R.string.http_warning))
-                    }
-                    LiquidGlassButton(
-                        onClick = { viewModel.testConnection(state.endpointDraft) },
-                        enabled = !state.busy && state.endpointDraft.isNotBlank(),
-                        modifier = Modifier.fillMaxWidth(),
-                        height = 40.dp,
-                    ) {
-                        if (state.busy) {
-                            CircularProgressIndicator(Modifier.size(15.dp), strokeWidth = 2.dp)
-                        } else {
-                            Icon(Icons.Outlined.WifiTethering, null, Modifier.size(16.dp))
-                        }
-                        Text(stringResource(R.string.test_connection), style = MaterialTheme.typography.labelLarge)
-                    }
-                }
+                Spacer(Modifier.height(6.dp))
             }
-
-            // Compact Pairing Card
-            CrispCard(
-                modifier = Modifier.fillMaxWidth(),
-                cornerRadius = 16.dp,
-                contentPadding = PaddingValues(14.dp),
-            ) {
-                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                    Text(
-                        stringResource(R.string.device_pairing),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                    GlassOutlinedField(
-                        value = code,
-                        onValueChange = { code = it },
-                        label = stringResource(R.string.pairing_code),
-                        leadingIcon = Icons.Outlined.Key,
-                    )
-                    GlassOutlinedField(
-                        value = deviceName,
-                        onValueChange = { deviceName = it },
-                        label = stringResource(R.string.device_name),
-                        leadingIcon = Icons.Outlined.PhoneAndroid,
-                    )
-                    LiquidGlassButton(
-                        onClick = { viewModel.pair(state.endpointDraft, code, deviceName) },
-                        enabled = !state.busy && state.endpointDraft.isNotBlank() && code.isNotBlank() && deviceName.isNotBlank(),
-                        tint = MaterialTheme.colorScheme.primary,
-                        modifier = Modifier.fillMaxWidth(),
-                        height = 44.dp,
-                    ) {
-                        if (state.busy) {
-                            CircularProgressIndicator(Modifier.size(16.dp), strokeWidth = 2.dp, color = Color.White)
-                        } else {
-                            Icon(Icons.Outlined.CheckCircle, null, Modifier.size(17.dp))
-                        }
-                        Text(stringResource(R.string.connect), style = MaterialTheme.typography.labelLarge)
-                    }
-                }
-            }
-
-            Spacer(Modifier.height(8.dp))
         }
     }
 }
@@ -249,20 +257,20 @@ internal fun GlassOutlinedField(
         onValueChange = onValueChange,
         modifier = modifier.fillMaxWidth(),
         textStyle = MaterialTheme.typography.bodyMedium,
-        label = { Text(label, style = MaterialTheme.typography.bodySmall) },
-        placeholder = placeholder?.let { { Text(it, style = MaterialTheme.typography.bodySmall) } },
+        label = { Text(label, style = MaterialTheme.typography.labelMedium) },
+        placeholder = placeholder?.let { { Text(it, style = MaterialTheme.typography.labelMedium) } },
         supportingText = supportingText?.let { { Text(it, style = MaterialTheme.typography.labelSmall) } },
-        leadingIcon = leadingIcon?.let { { Icon(it, null, Modifier.size(18.dp)) } },
+        leadingIcon = leadingIcon?.let { { Icon(it, null, Modifier.size(16.dp)) } },
         isError = isError,
         singleLine = singleLine,
         keyboardOptions = KeyboardOptions(keyboardType = keyboardType),
         visualTransformation = visualTransformation,
-        shape = RoundedRectangle(12.dp),
+        shape = RoundedRectangle(9.dp),
         colors = OutlinedTextFieldDefaults.colors(
             focusedContainerColor = palette.cardBackground,
-            unfocusedContainerColor = palette.searchBackground.copy(alpha = 0.55f),
+            unfocusedContainerColor = palette.searchBackground.copy(alpha = 0.65f),
             focusedBorderColor = MaterialTheme.colorScheme.primary,
-            unfocusedBorderColor = palette.cardBorder,
+            unfocusedBorderColor = MaterialTheme.colorScheme.outlineVariant,
         ),
     )
 }

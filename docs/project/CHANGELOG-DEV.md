@@ -5,7 +5,7 @@
 - 完成 `COMPAT-001`：适配 DeepSeek Harness `0.2.x` 与 `dsh-workspace@1.2.0`，新增 `HistoryEntrySerializer` 兼容裸 `SessionWireEvent` 历史、`AgentPreset` 缺省字段安全默认值、对象参数工具摘要、`agent/assistant-stream` 流式增量与标题保留，并修复启动恢复遇到临时网络错误时误清本机令牌的问题。
 - 完成 `FEATURE-001`：补全 `dsh-workspace@1.2.0` 全套新能力——会话置顶/取消置顶、归档列表与取消归档、服务端会话全文搜索、授权根目录递归文件搜索、排队消息查看/编辑/插队/移除、Agent 交互式提问卡片（单选/多选/自定义回答）、图片附件预览发送、动态权限目录、健康能力声明、默认 Base URL 与自定义供应商删除。
 - 完成 `UI-005`：引入 `Kyant0/AndroidLiquidGlass`（`backdrop 2.0.0` + `shapes 1.2.0`，Apache-2.0，已补全 `NOTICE` 与许可证文本），重构为紧凑高密度、真通透折射的 Apple Liquid Glass 浅色/深色/跟随系统界面，新增对称五槽悬浮液态玻璃底栏（`会话 | 工作区 | + | 文件 | 设置`）、独立工作区页、单行搜索胶囊、悬浮液态玻璃聊天栏与代码编辑器缩放胶囊；通过 `LiquidGlassStage` 严格隔离 backdrop 避免 Skia RenderNode 循环崩溃。
-- 完成 `REL-005`：升级至 `versionName = 1.2.0`、`versionCode = 10200`、`compileSdk = 37`（同步更新 GitHub Actions SDK 37 配置）；在 MuMu Android 15 模拟器完成真实 DSH `0.2.2-rc.5` 端到端验证并替换全部 6 张截图，更新中英双语 README、项目文档与正式签名 APK（2,633,732 字节，SHA-256 `CC9C5C36F421DAE3C4C82E93F8E23629E69C8A9C13E4BBDC80E7D82112C2C5A4`）。
+- 完成 `REL-005`：升级至 `versionName = 1.2.0`、`versionCode = 10200`、`compileSdk = 37`（同步更新 GitHub Actions SDK 37 配置）；在 MuMu Android 15 模拟器完成真实 DSH `0.2.2-rc.5` 端到端验证并替换全部 6 张截图，更新中英双语 README、项目文档与正式签名 APK（2,652,224 字节，SHA-256 `4D11A171C73176D2F2B01140CE0CF38533EFDF13C26F65AA0D173E5CCE89EAB4`）。
 
 ## 2026-08-15 · v1.0.0
 

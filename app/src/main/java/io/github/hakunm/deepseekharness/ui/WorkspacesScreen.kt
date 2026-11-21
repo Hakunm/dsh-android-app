@@ -10,7 +10,6 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
-import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBarsPadding
@@ -67,18 +66,16 @@ fun WorkspacesScreen(
     var deleteTarget by remember { mutableStateOf<ChatWorkspace?>(null) }
     var titleDraft by remember { mutableStateOf("") }
 
-    Column(
-        modifier = Modifier
-            .fillMaxSize()
-            .statusBarsPadding()
-            .padding(horizontal = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        // Compact Top Bar
+    Column(Modifier.fillMaxSize()) {
+        // Seamless White/Dark Top Header
         Row(
-            Modifier.fillMaxWidth().height(44.dp).padding(horizontal = 4.dp),
+            Modifier
+                .fillMaxWidth()
+                .background(palette.headerBackground)
+                .statusBarsPadding()
+                .padding(horizontal = 12.dp, vertical = 7.dp),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
             Text(
                 stringResource(R.string.workspaces),
@@ -90,25 +87,25 @@ fun WorkspacesScreen(
                 Row(
                     modifier = Modifier
                         .clip(CircleShape)
-                        .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.12f), CircleShape)
+                        .background(palette.chipSelectedBackground, CircleShape)
                         .clickable(enabled = !state.busy, onClick = onCreateWorkspace)
-                        .padding(horizontal = 10.dp, vertical = 5.dp),
+                        .padding(horizontal = 9.dp, vertical = 4.dp),
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(4.dp),
+                    horizontalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
-                    Icon(Icons.Outlined.Add, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.primary)
+                    Icon(Icons.Outlined.Add, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.primary)
                     Text(
                         stringResource(R.string.new_workspace),
                         color = MaterialTheme.colorScheme.primary,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall,
                     )
                 }
             }
             IconButton(
                 onClick = viewModel::refreshDashboard,
-                modifier = Modifier.size(34.dp),
+                modifier = Modifier.size(28.dp),
             ) {
-                Icon(Icons.Outlined.Refresh, stringResource(R.string.refresh), Modifier.size(19.dp))
+                Icon(Icons.Outlined.Refresh, stringResource(R.string.refresh), Modifier.size(17.dp))
             }
         }
 
@@ -123,32 +120,33 @@ fun WorkspacesScreen(
         } else {
             LazyColumn(
                 modifier = Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(top = 2.dp, bottom = bottomDockInset + 14.dp),
-                verticalArrangement = Arrangement.spacedBy(8.dp),
+                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 6.dp, bottom = bottomDockInset + 10.dp),
+                verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 itemsIndexed(state.chatWorkspaces, key = { _, ws -> ws.id }) { index, workspace ->
                     val sessionCount = state.sessions.count { it.workspaceId == workspace.id }
-                    val (c1, c2) = when (index % 4) {
-                        0 -> palette.accentBlue to palette.accentCyan
-                        1 -> palette.accentIndigo to palette.accentBlue
-                        2 -> palette.accentEmerald to palette.accentCyan
-                        else -> palette.accentAmber to palette.accentCoral
+                    val accent = when (index % 4) {
+                        0 -> palette.accentJade
+                        1 -> palette.accentBlue
+                        2 -> palette.accentAmber
+                        else -> palette.accentIndigo
                     }
                     CrispCard(
                         modifier = Modifier.fillMaxWidth(),
-                        cornerRadius = 15.dp,
-                        contentPadding = PaddingValues(12.dp),
+                        cornerRadius = 10.dp,
+                        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
                     ) {
-                        Column(verticalArrangement = Arrangement.spacedBy(9.dp)) {
+                        Column(verticalArrangement = Arrangement.spacedBy(7.dp)) {
                             Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically) {
                                 SquircleIconBadge(
                                     icon = Icons.Outlined.Folder,
-                                    startColor = c1,
-                                    endColor = c2,
-                                    size = 36.dp,
-                                    iconSize = 19.dp,
+                                    startColor = accent,
+                                    size = 28.dp,
+                                    iconSize = 15.dp,
+                                    cornerRadius = 8.dp,
+                                    softTint = true,
                                 )
-                                Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
+                                Column(Modifier.weight(1f).padding(horizontal = 9.dp)) {
                                     Text(
                                         workspace.title,
                                         maxLines = 1,
@@ -169,51 +167,51 @@ fun WorkspacesScreen(
                                 Row(
                                     Modifier.fillMaxWidth(),
                                     verticalAlignment = Alignment.CenterVertically,
-                                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                                    horizontalArrangement = Arrangement.spacedBy(4.dp),
                                 ) {
                                     Row(
                                         modifier = Modifier
                                             .clip(CircleShape)
-                                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.11f), CircleShape)
+                                            .background(palette.chipSelectedBackground, CircleShape)
                                             .clickable(enabled = !state.busy) { onStartSessionInWorkspace(workspace.id) }
-                                            .padding(horizontal = 11.dp, vertical = 5.dp),
+                                            .padding(horizontal = 9.dp, vertical = 4.dp),
                                         verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(5.dp),
+                                        horizontalArrangement = Arrangement.spacedBy(4.dp),
                                     ) {
                                         Icon(
                                             Icons.Outlined.ChatBubbleOutline,
                                             null,
-                                            Modifier.size(14.dp),
+                                            Modifier.size(12.dp),
                                             tint = MaterialTheme.colorScheme.primary,
                                         )
                                         Text(
                                             stringResource(R.string.start_chat),
                                             color = MaterialTheme.colorScheme.primary,
-                                            style = MaterialTheme.typography.labelMedium,
+                                            style = MaterialTheme.typography.labelSmall,
                                         )
                                     }
                                     Spacer(Modifier.weight(1f))
                                     IconButton(
                                         onClick = { titleDraft = workspace.title; renameTarget = workspace },
                                         enabled = !state.busy,
-                                        modifier = Modifier.size(32.dp),
+                                        modifier = Modifier.size(26.dp),
                                     ) {
                                         Icon(
                                             Icons.Outlined.Edit,
                                             stringResource(R.string.rename_workspace),
-                                            Modifier.size(17.dp),
+                                            Modifier.size(14.5.dp),
                                             tint = MaterialTheme.colorScheme.onSurfaceVariant,
                                         )
                                     }
                                     IconButton(
                                         onClick = { deleteTarget = workspace },
                                         enabled = !state.busy,
-                                        modifier = Modifier.size(32.dp),
+                                        modifier = Modifier.size(26.dp),
                                     ) {
                                         Icon(
                                             Icons.Outlined.DeleteOutline,
                                             stringResource(R.string.remove_workspace),
-                                            Modifier.size(17.dp),
+                                            Modifier.size(14.5.dp),
                                             tint = MaterialTheme.colorScheme.error,
                                         )
                                     }
@@ -229,7 +227,7 @@ fun WorkspacesScreen(
     renameTarget?.let { workspace ->
         AlertDialog(
             onDismissRequest = { renameTarget = null },
-            title = { Text(stringResource(R.string.rename_workspace)) },
+            title = { Text(stringResource(R.string.rename_workspace), style = MaterialTheme.typography.titleLarge) },
             text = {
                 GlassOutlinedField(titleDraft, { titleDraft = it }, stringResource(R.string.name))
             },
@@ -249,8 +247,8 @@ fun WorkspacesScreen(
     deleteTarget?.let { workspace ->
         AlertDialog(
             onDismissRequest = { deleteTarget = null },
-            title = { Text(stringResource(R.string.remove_workspace_title)) },
-            text = { Text(stringResource(R.string.remove_workspace_warning, workspace.title)) },
+            title = { Text(stringResource(R.string.remove_workspace_title), style = MaterialTheme.typography.titleLarge) },
+            text = { Text(stringResource(R.string.remove_workspace_warning, workspace.title), style = MaterialTheme.typography.bodySmall) },
             confirmButton = {
                 TextButton(onClick = { viewModel.deleteWorkspace(workspace.id); deleteTarget = null }) {
                     Text(stringResource(R.string.remove_workspace), color = MaterialTheme.colorScheme.error)

@@ -9,7 +9,7 @@
 - 已完成：Apple Liquid Glass（`Kyant0/AndroidLiquidGlass` `backdrop 2.0.0` + `shapes 1.2.0`）浅色/深色/跟随系统三档主题、五槽悬浮液态玻璃底栏、独立工作区页、会话置顶/归档恢复/全文搜索、递归文件搜索、排队消息编辑/插队/删除、Agent 交互式提问卡片、图片附件发送、动态权限目录、自定义供应商删除、断网容错重连与中英双语
 - 本次刷新：全部 6 张 README 截图替换为 MuMu Android 15 实测新界面截图（浅色与深色液态玻璃），同步更新中英双语 README、NOTICE 与 CI SDK 37 配置
 - 最近验证：Temurin 17 下 `docsCheck testDebugUnitTest lintDebug assembleRelease` 通过，8 份文档与 37 个任务一致；R8 Release、专用签名与 MuMu Android 15 连接真实 `@deepseek-ai/dsh@0.2.2-rc.5` + `dsh-workspace@1.2.0` 端到端验证通过
-- 正式产物：`artifacts/DeepSeek-Harness-v1.2.0.apk`，2,633,732 字节，SHA-256 `CC9C5C36F421DAE3C4C82E93F8E23629E69C8A9C13E4BBDC80E7D82112C2C5A4`
+- 正式产物：`artifacts/DeepSeek-Harness-v1.2.0.apk`，2,652,224 字节，SHA-256 `4D11A171C73176D2F2B01140CE0CF38533EFDF13C26F65AA0D173E5CCE89EAB4`
 - 签名：APK Signature Scheme v2，单一 Hakunm 4096 位 RSA 证书；证书 SHA-256 `A92938B33F59D90993ADA96437F8A8DEF987A27353E46A018661DDC1587046B1`（与 v1.0.0 一致，支持直接覆盖升级）
 - GitHub：`https://github.com/Hakunm/dsh-android-app`，topic 包含 `dsh-plugin`
 - Release：`https://github.com/Hakunm/dsh-android-app/releases/tag/v1.2.0`

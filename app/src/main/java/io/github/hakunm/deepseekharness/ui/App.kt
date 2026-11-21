@@ -1,5 +1,6 @@
 package io.github.hakunm.deepseekharness.ui
 
+import androidx.activity.compose.BackHandler
 import androidx.appcompat.app.AppCompatDelegate
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.fadeIn
@@ -27,13 +28,13 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.outlined.ChatBubbleOutline
+import androidx.compose.material.icons.filled.ChatBubble
+import androidx.compose.material.icons.filled.Folder
+import androidx.compose.material.icons.filled.Settings
+import androidx.compose.material.icons.filled.Workspaces
 import androidx.compose.material.icons.outlined.Close
 import androidx.compose.material.icons.outlined.ErrorOutline
-import androidx.compose.material.icons.outlined.FolderOpen
 import androidx.compose.material.icons.outlined.Refresh
-import androidx.compose.material.icons.outlined.Settings
-import androidx.compose.material.icons.outlined.Workspaces
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -84,6 +85,10 @@ fun DeepSeekHarnessApp(viewModel: HarnessViewModel) {
     val canWriteChat = "chat.write" in state.device?.scopes.orEmpty()
     val canWriteFiles = "files.write" in state.device?.scopes.orEmpty()
 
+    BackHandler(enabled = state.connected && sectionIndex != 0 && state.document == null) {
+        sectionIndex = 0
+    }
+
     BoxWithConstraints(Modifier.fillMaxSize()) {
         val wide = maxWidth >= 840.dp
         val showFloatingBottomBar = !wide && state.connected && when (section) {
@@ -93,10 +98,10 @@ fun DeepSeekHarnessApp(viewModel: HarnessViewModel) {
             AppSection.SETTINGS -> true
         }
         val dockTabs = listOf(
-            LiquidDockTab(stringResource(R.string.chat), Icons.Outlined.ChatBubbleOutline),
-            LiquidDockTab(stringResource(R.string.workspaces), Icons.Outlined.Workspaces),
-            LiquidDockTab(stringResource(R.string.files), Icons.Outlined.FolderOpen),
-            LiquidDockTab(stringResource(R.string.settings), Icons.Outlined.Settings),
+            LiquidDockTab(stringResource(R.string.chat), Icons.Filled.ChatBubble),
+            LiquidDockTab(stringResource(R.string.workspaces), Icons.Filled.Workspaces),
+            LiquidDockTab(stringResource(R.string.files), Icons.Filled.Folder),
+            LiquidDockTab(stringResource(R.string.settings), Icons.Filled.Settings),
         )
 
         LiquidGlassStage(
@@ -105,15 +110,15 @@ fun DeepSeekHarnessApp(viewModel: HarnessViewModel) {
                     state.restoring -> {
                         Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                             CrispCard(
-                                cornerRadius = 22.dp,
-                                contentPadding = PaddingValues(horizontal = 28.dp, vertical = 22.dp),
+                                cornerRadius = 14.dp,
+                                contentPadding = PaddingValues(horizontal = 24.dp, vertical = 18.dp),
                             ) {
                                 Column(
                                     horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(12.dp),
+                                    verticalArrangement = Arrangement.spacedBy(10.dp),
                                 ) {
-                                    BrandMark(size = 48.dp)
-                                    CircularProgressIndicator(Modifier.size(22.dp), strokeWidth = 2.dp)
+                                    BrandMark(size = 36.dp)
+                                    CircularProgressIndicator(Modifier.size(18.dp), strokeWidth = 1.8.dp)
                                 }
                             }
                         }
@@ -143,12 +148,12 @@ fun DeepSeekHarnessApp(viewModel: HarnessViewModel) {
                                     state = state,
                                     viewModel = viewModel,
                                     wide = true,
-                                    bottomDockInset = 12.dp,
+                                    bottomDockInset = 10.dp,
                                     onOpenNewSession = { newWs ->
                                         createSessionInitialNewWs = newWs
                                         createSessionSheet = true
                                     },
-                                    onOpenChatTab = { sectionIndex = 0 },
+                                    onSelectTab = { sectionIndex = it },
                                     externalCreateFileRequest = fileCreateRequest,
                                     onConsumeFileCreateRequest = { fileCreateRequest = null },
                                 )
@@ -163,12 +168,12 @@ fun DeepSeekHarnessApp(viewModel: HarnessViewModel) {
                                 state = state,
                                 viewModel = viewModel,
                                 wide = false,
-                                bottomDockInset = if (showFloatingBottomBar) 82.dp else 0.dp,
+                                bottomDockInset = if (showFloatingBottomBar) 66.dp else 0.dp,
                                 onOpenNewSession = { newWs ->
                                     createSessionInitialNewWs = newWs
                                     createSessionSheet = true
                                 },
-                                onOpenChatTab = { sectionIndex = 0 },
+                                onSelectTab = { sectionIndex = it },
                                 externalCreateFileRequest = fileCreateRequest,
                                 onConsumeFileCreateRequest = { fileCreateRequest = null },
                             )
@@ -177,7 +182,6 @@ fun DeepSeekHarnessApp(viewModel: HarnessViewModel) {
                 }
             },
             overlay = {
-                // Floating Crystal Liquid Glass Error Toast
                 AnimatedVisibility(
                     visible = state.error != null,
                     enter = fadeIn() + slideInVertically { -it },
@@ -185,7 +189,7 @@ fun DeepSeekHarnessApp(viewModel: HarnessViewModel) {
                     modifier = Modifier
                         .align(Alignment.TopCenter)
                         .statusBarsPadding()
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                        .padding(horizontal = 14.dp, vertical = 6.dp),
                 ) {
                     state.error?.let { rawError ->
                         FloatingErrorPill(
@@ -195,7 +199,7 @@ fun DeepSeekHarnessApp(viewModel: HarnessViewModel) {
                     }
                 }
 
-                // Signature 5-slot True Crystal Liquid Glass Bottom Dock
+                // Sleek 48dp Frosted Liquid Glass Bottom Dock
                 AnimatedVisibility(
                     visible = showFloatingBottomBar,
                     enter = fadeIn() + slideInVertically { it / 2 },
@@ -203,7 +207,7 @@ fun DeepSeekHarnessApp(viewModel: HarnessViewModel) {
                     modifier = Modifier
                         .align(Alignment.BottomCenter)
                         .navigationBarsPadding()
-                        .padding(horizontal = 14.dp, vertical = 8.dp),
+                        .padding(horizontal = 20.dp, vertical = 6.dp),
                 ) {
                     LiquidGlassDock(
                         tabs = dockTabs,
@@ -222,7 +226,7 @@ fun DeepSeekHarnessApp(viewModel: HarnessViewModel) {
                         ),
                         centerActionEnabled = if (section == AppSection.FILES) canWriteFiles && !state.busy
                         else canWriteChat && !state.busy,
-                        modifier = Modifier.widthIn(max = 420.dp),
+                        modifier = Modifier.widthIn(max = 368.dp),
                     )
                 }
             },
@@ -251,7 +255,7 @@ private fun ActiveSectionContent(
     wide: Boolean,
     bottomDockInset: Dp,
     onOpenNewSession: (Boolean) -> Unit,
-    onOpenChatTab: () -> Unit,
+    onSelectTab: (Int) -> Unit,
     externalCreateFileRequest: Boolean?,
     onConsumeFileCreateRequest: () -> Unit,
 ) {
@@ -262,6 +266,9 @@ private fun ActiveSectionContent(
             wide = wide,
             bottomDockInset = bottomDockInset,
             onCreateSession = { onOpenNewSession(false) },
+            onCreateWorkspace = { onOpenNewSession(true) },
+            onJumpToFiles = { onSelectTab(2) },
+            onJumpToSettings = { onSelectTab(3) },
         )
         AppSection.WORKSPACES -> WorkspacesScreen(
             state = state,
@@ -270,7 +277,7 @@ private fun ActiveSectionContent(
             onCreateWorkspace = { onOpenNewSession(true) },
             onStartSessionInWorkspace = { wsId ->
                 viewModel.createSession(wsId, null)
-                onOpenChatTab()
+                onSelectTab(0)
             },
         )
         AppSection.FILES -> FilesScreen(
@@ -295,20 +302,20 @@ private fun WideLiquidRail(
 ) {
     val palette = LocalGlassPalette.current
     Column(
-        modifier = Modifier.width(204.dp).fillMaxHeight().padding(10.dp),
+        modifier = Modifier.width(184.dp).fillMaxHeight().padding(8.dp),
     ) {
         CrispCard(
             modifier = Modifier.fillMaxSize(),
-            cornerRadius = 20.dp,
-            contentPadding = PaddingValues(12.dp),
+            cornerRadius = 14.dp,
+            contentPadding = PaddingValues(10.dp),
         ) {
             Column(Modifier.fillMaxSize()) {
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(9.dp),
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
                     modifier = Modifier.padding(horizontal = 4.dp, vertical = 4.dp),
                 ) {
-                    BrandMark(size = 34.dp)
+                    BrandMark(size = 28.dp)
                     Column(Modifier.weight(1f)) {
                         Text(
                             stringResource(R.string.app_name),
@@ -321,7 +328,7 @@ private fun WideLiquidRail(
                             horizontalArrangement = Arrangement.spacedBy(4.dp),
                         ) {
                             Box(
-                                Modifier.size(6.dp).background(
+                                Modifier.size(5.dp).background(
                                     if (state.eventsConnected) palette.successText else MaterialTheme.colorScheme.outline,
                                     CircleShape,
                                 ),
@@ -335,7 +342,7 @@ private fun WideLiquidRail(
                         }
                     }
                 }
-                Spacer(Modifier.height(12.dp))
+                Spacer(Modifier.height(10.dp))
                 tabs.forEachIndexed { index, item ->
                     val selected = index == selectedIndex
                     Row(
@@ -349,20 +356,20 @@ private fun WideLiquidRail(
                                 CircleShape,
                             )
                             .clickable { onSelect(index) }
-                            .padding(horizontal = 12.dp, vertical = 9.dp),
+                            .padding(horizontal = 10.dp, vertical = 7.dp),
                         verticalAlignment = Alignment.CenterVertically,
-                        horizontalArrangement = Arrangement.spacedBy(10.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
                     ) {
                         Icon(
                             item.icon,
                             contentDescription = item.label,
-                            modifier = Modifier.size(18.dp),
+                            modifier = Modifier.size(16.dp),
                             tint = if (selected) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                         Text(
                             item.label,
-                            style = MaterialTheme.typography.labelLarge,
+                            style = MaterialTheme.typography.labelMedium,
                             color = if (selected) MaterialTheme.colorScheme.primary
                             else MaterialTheme.colorScheme.onSurface,
                         )
@@ -385,8 +392,8 @@ private fun WideLiquidRail(
                         onClick = onRefresh,
                         icon = Icons.Outlined.Refresh,
                         contentDescription = stringResource(R.string.refresh),
-                        size = 32.dp,
-                        iconSize = 16.dp,
+                        size = 28.dp,
+                        iconSize = 15.dp,
                     )
                 }
             }
@@ -398,17 +405,17 @@ private fun WideLiquidRail(
 private fun FloatingErrorPill(message: String, onDismiss: () -> Unit) {
     val palette = LocalGlassPalette.current
     LiquidGlassFloatingBar(
-        modifier = Modifier.fillMaxWidth().widthIn(max = 520.dp),
-        cornerRadius = 18.dp,
-        surfaceTint = palette.dangerTint.copy(alpha = 0.72f),
-        contentPadding = PaddingValues(horizontal = 12.dp, vertical = 9.dp),
+        modifier = Modifier.fillMaxWidth().widthIn(max = 480.dp),
+        cornerRadius = 14.dp,
+        surfaceTint = palette.dangerTint.copy(alpha = 0.85f),
+        contentPadding = PaddingValues(horizontal = 10.dp, vertical = 7.dp),
     ) {
         Row(
             Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            horizontalArrangement = Arrangement.spacedBy(7.dp),
         ) {
-            Icon(Icons.Outlined.ErrorOutline, null, Modifier.size(18.dp), tint = palette.dangerText)
+            Icon(Icons.Outlined.ErrorOutline, null, Modifier.size(15.dp), tint = palette.dangerText)
             Text(
                 message,
                 modifier = Modifier.weight(1f),
@@ -417,8 +424,8 @@ private fun FloatingErrorPill(message: String, onDismiss: () -> Unit) {
                 maxLines = 3,
                 overflow = TextOverflow.Ellipsis,
             )
-            Box(Modifier.size(24.dp).clickable(onClick = onDismiss), contentAlignment = Alignment.Center) {
-                Icon(Icons.Outlined.Close, stringResource(R.string.dismiss), Modifier.size(16.dp), tint = palette.dangerText)
+            Box(Modifier.size(22.dp).clickable(onClick = onDismiss), contentAlignment = Alignment.Center) {
+                Icon(Icons.Outlined.Close, stringResource(R.string.dismiss), Modifier.size(14.dp), tint = palette.dangerText)
             }
         }
     }

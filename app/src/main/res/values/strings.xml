@@ -24,6 +24,11 @@
     <string name="tab_running">运行中</string>
     <string name="tab_archived">归档</string>
     <string name="all_workspaces">全部工作区</string>
+    <string name="quick_new_chat">新建会话</string>
+    <string name="quick_add_workspace">登记目录</string>
+    <string name="quick_browse_files">文件浏览</string>
+    <string name="quick_model_routes">模型路由</string>
+    <string name="quick_sync_now">实时同步</string>
     <string name="start_chat">开始会话</string>
     <string name="new_session">新建会话</string>
     <string name="no_sessions">暂无可见会话</string>

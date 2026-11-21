@@ -30,6 +30,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kyant.shapes.RoundedRectangle
 import io.github.hakunm.deepseekharness.R
 import io.github.hakunm.deepseekharness.ui.glass.CrispCard
@@ -37,23 +38,22 @@ import io.github.hakunm.deepseekharness.ui.glass.SquircleIconBadge
 import io.github.hakunm.deepseekharness.ui.theme.LocalGlassPalette
 
 @Composable
-fun BrandMark(modifier: Modifier = Modifier, size: Dp = 32.dp) {
+fun BrandMark(modifier: Modifier = Modifier, size: Dp = 26.dp) {
     val palette = LocalGlassPalette.current
-    val shape = RoundedRectangle(size * 0.28f)
     Box(
         modifier = modifier
             .size(size)
-            .clip(shape)
+            .clip(CircleShape)
             .background(
-                Brush.linearGradient(listOf(palette.accentBlue, palette.accentCyan)),
-                shape,
+                Brush.linearGradient(listOf(palette.accentJadeBright, palette.accentJade)),
+                CircleShape,
             ),
         contentAlignment = Alignment.Center,
     ) {
         Icon(
             painter = painterResource(R.drawable.ic_launcher_foreground),
             contentDescription = null,
-            modifier = Modifier.size(size * 0.72f),
+            modifier = Modifier.size(size * 0.74f),
             tint = Color.White,
         )
     }
@@ -62,20 +62,20 @@ fun BrandMark(modifier: Modifier = Modifier, size: Dp = 32.dp) {
 @Composable
 fun WarningBanner(message: String, modifier: Modifier = Modifier) {
     val palette = LocalGlassPalette.current
-    val shape = RoundedRectangle(12.dp)
+    val shape = RoundedRectangle(8.dp)
     Row(
         modifier = modifier
             .fillMaxWidth()
             .clip(shape)
             .background(palette.warningTint, shape)
-            .padding(horizontal = 10.dp, vertical = 8.dp),
+            .padding(horizontal = 9.dp, vertical = 7.dp),
         verticalAlignment = Alignment.Top,
-        horizontalArrangement = Arrangement.spacedBy(8.dp),
+        horizontalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Icon(
             Icons.Outlined.WarningAmber,
             contentDescription = null,
-            modifier = Modifier.size(16.dp).padding(top = 1.dp),
+            modifier = Modifier.size(14.dp).padding(top = 1.dp),
             tint = palette.warningText,
         )
         Text(
@@ -98,17 +98,18 @@ fun StatusPill(
         modifier = modifier
             .clip(CircleShape)
             .background(if (active) palette.successTint else palette.searchBackground, CircleShape)
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .padding(horizontal = 7.dp, vertical = 2.dp),
         verticalAlignment = Alignment.CenterVertically,
-        horizontalArrangement = Arrangement.spacedBy(5.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
     ) {
-        Box(Modifier.size(6.dp).background(dotColor, CircleShape))
+        Box(Modifier.size(5.dp).background(dotColor, CircleShape))
         Text(
             label,
             color = if (active) palette.successText else MaterialTheme.colorScheme.onSurfaceVariant,
             maxLines = 1,
             softWrap = false,
-            style = MaterialTheme.typography.labelSmall,
+            fontSize = 9.5.sp,
+            lineHeight = 12.sp,
         )
     }
 }
@@ -120,11 +121,12 @@ fun SmallTagPill(
     contentColor: Color = MaterialTheme.colorScheme.onSurfaceVariant,
     modifier: Modifier = Modifier,
 ) {
+    val shape = RoundedRectangle(5.dp)
     Box(
         modifier = modifier
-            .clip(CircleShape)
-            .background(backgroundColor, CircleShape)
-            .padding(horizontal = 8.dp, vertical = 3.dp),
+            .clip(shape)
+            .background(backgroundColor, shape)
+            .padding(horizontal = 6.dp, vertical = 1.5.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
@@ -132,7 +134,8 @@ fun SmallTagPill(
             color = contentColor,
             maxLines = 1,
             softWrap = false,
-            style = MaterialTheme.typography.labelSmall,
+            fontSize = 9.5.sp,
+            lineHeight = 12.sp,
         )
     }
 }
@@ -146,35 +149,38 @@ fun EmptyState(
 ) {
     val palette = LocalGlassPalette.current
     Column(
-        modifier = modifier.padding(24.dp),
+        modifier = modifier.padding(20.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(8.dp),
+        verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(
             modifier = Modifier
-                .size(48.dp)
-                .clip(RoundedRectangle(15.dp))
-                .background(palette.cardBackground, RoundedRectangle(15.dp))
-                .border(0.6.dp, palette.cardBorder, RoundedRectangle(15.dp)),
+                .size(40.dp)
+                .clip(RoundedRectangle(12.dp))
+                .background(palette.cardBackground, RoundedRectangle(12.dp))
+                .then(
+                    if (palette.cardBorder.alpha > 0.01f) Modifier.border(0.5.dp, palette.cardBorder, RoundedRectangle(12.dp))
+                    else Modifier,
+                ),
             contentAlignment = Alignment.Center,
         ) {
             Icon(
                 icon,
                 contentDescription = null,
-                modifier = Modifier.size(24.dp),
+                modifier = Modifier.size(20.dp),
                 tint = MaterialTheme.colorScheme.primary,
             )
         }
         Text(
             title,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
-            style = MaterialTheme.typography.bodyMedium,
+            style = MaterialTheme.typography.bodySmall,
         )
         if (!subtitle.isNullOrBlank()) {
             Text(
                 subtitle,
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.8f),
-                style = MaterialTheme.typography.bodySmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.75f),
+                style = MaterialTheme.typography.labelSmall,
             )
         }
     }
@@ -187,7 +193,7 @@ fun SectionPanel(
     trailing: (@Composable RowScope.() -> Unit)? = null,
     content: @Composable () -> Unit,
 ) {
-    Column(modifier, verticalArrangement = Arrangement.spacedBy(6.dp)) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(5.dp)) {
         Row(
             Modifier.fillMaxWidth().padding(horizontal = 4.dp),
             verticalAlignment = Alignment.CenterVertically,
@@ -196,13 +202,13 @@ fun SectionPanel(
                 stringResource(title),
                 modifier = Modifier.weight(1f),
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
-                style = MaterialTheme.typography.labelMedium,
+                style = MaterialTheme.typography.labelSmall,
             )
             trailing?.invoke(this)
         }
         CrispCard(
             modifier = Modifier.fillMaxWidth(),
-            cornerRadius = 16.dp,
+            cornerRadius = 10.dp,
             contentPadding = PaddingValues(0.dp),
         ) {
             content()
@@ -216,23 +222,24 @@ fun SettingRow(
     title: String,
     value: String,
     modifier: Modifier = Modifier,
-    iconStartColor: Color = LocalGlassPalette.current.accentBlue,
+    iconStartColor: Color = LocalGlassPalette.current.accentJade,
     iconEndColor: Color = iconStartColor,
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp),
+        modifier = modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         SquircleIconBadge(
             icon = icon,
             startColor = iconStartColor,
             endColor = iconEndColor,
-            size = 32.dp,
-            iconSize = 17.dp,
-            cornerRadius = 9.dp,
+            size = 26.dp,
+            iconSize = 14.5.dp,
+            cornerRadius = 7.dp,
+            softTint = true,
         )
-        Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
+        Column(Modifier.weight(1f).padding(horizontal = 10.dp)) {
             Text(title, style = MaterialTheme.typography.titleSmall)
             if (value.isNotEmpty()) {
                 Text(
@@ -240,7 +247,7 @@ fun SettingRow(
                     maxLines = 2,
                     overflow = TextOverflow.Ellipsis,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
+                    style = MaterialTheme.typography.labelSmall,
                 )
             }
         }

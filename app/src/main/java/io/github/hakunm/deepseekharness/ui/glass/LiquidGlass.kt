@@ -49,7 +49,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.BlendMode
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.SolidColor
@@ -85,16 +84,11 @@ import io.github.hakunm.deepseekharness.ui.theme.LocalIsDarkGlass
 import kotlin.math.roundToInt
 
 /**
- * Backdrop capturing the entire crisp scrollable page layer underneath floating Liquid Glass chrome.
+ * Backdrop capturing the scrollable page layer underneath floating Liquid Glass chrome.
  * Provided ONLY to [LiquidGlassStage]'s `overlay` slot so descendant content can NEVER trigger a cycle.
  */
 val LocalContentBackdrop = compositionLocalOf<Backdrop?> { null }
 
-/**
- * Clean high-craft canvas stage that captures the full content layer into [LocalContentBackdrop]
- * so floating crystal Liquid Glass bars (dock, headers, composers, toasts) exhibit vivid optical
- * refraction, chromatic dispersion, and specular depth over real scrolling UI content.
- */
 @Composable
 fun LiquidGlassStage(
     modifier: Modifier = Modifier,
@@ -121,26 +115,24 @@ fun LiquidGlassStage(
 }
 
 /**
- * Clean, refined, compact card for structured content lists & grouped panels.
- * Crisp white/dark surface with subtle hairline border ensures maximum scannability and provides
- * vibrant contrast underneath floating crystal Liquid Glass chrome.
+ * Clean, borderless (in light mode) editorial card matching Coolapk v15 feed surfaces.
  */
 @Composable
 fun CrispCard(
     modifier: Modifier = Modifier,
-    cornerRadius: Dp = 15.dp,
+    cornerRadius: Dp = 10.dp,
     backgroundColor: Color = LocalGlassPalette.current.cardBackground,
     borderColor: Color = LocalGlassPalette.current.cardBorder,
     onClick: (() -> Unit)? = null,
-    contentPadding: PaddingValues = PaddingValues(12.dp),
+    contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 10.dp),
     content: @Composable BoxScope.() -> Unit,
 ) {
     val shape = RoundedRectangle(cornerRadius)
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (onClick != null && pressed) 0.988f else 1f,
-        animationSpec = spring(dampingRatio = 0.7f, stiffness = 550f),
+        targetValue = if (onClick != null && pressed) 0.99f else 1f,
+        animationSpec = spring(dampingRatio = 0.75f, stiffness = 600f),
         label = "crispCardScale",
     )
     Box(
@@ -151,7 +143,10 @@ fun CrispCard(
             }
             .clip(shape)
             .background(backgroundColor, shape)
-            .border(0.6.dp, borderColor, shape)
+            .then(
+                if (borderColor.alpha > 0.01f) Modifier.border(0.5.dp, borderColor, shape)
+                else Modifier,
+            )
             .then(
                 if (onClick != null) {
                     Modifier.clickable(
@@ -167,22 +162,20 @@ fun CrispCard(
 }
 
 /**
- * True transparent Crystal Liquid Glass floating surface powered by Kyant0/AndroidLiquidGlass.
- * Low surface alpha + crisp light blur + pronounced optical lens refraction + chromatic aberration
- * makes scrolling content beneath unmistakably bend and shimmer like sculpted glass.
+ * Refined Frosted Liquid Glass floating bar (smooth blur + clean curved rim refraction, zero rainbow smear).
  */
 @Composable
 fun LiquidGlassFloatingBar(
     modifier: Modifier = Modifier,
-    cornerRadius: Dp = 24.dp,
+    cornerRadius: Dp = 20.dp,
     capsule: Boolean = false,
     backdrop: Backdrop? = LocalContentBackdrop.current,
     surfaceTint: Color = LocalGlassPalette.current.glassCrystalSurface,
-    blurRadius: Dp = 6.dp,
-    refractionHeight: Dp = 14.dp,
-    refractionAmount: Dp = 30.dp,
-    chromaticAberration: Boolean = true,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 12.dp, vertical = 8.dp),
+    blurRadius: Dp = 9.dp,
+    refractionHeight: Dp = 11.dp,
+    refractionAmount: Dp = 22.dp,
+    chromaticAberration: Boolean = false,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 10.dp, vertical = 6.dp),
     content: @Composable BoxScope.() -> Unit,
 ) {
     val palette = LocalGlassPalette.current
@@ -203,20 +196,20 @@ fun LiquidGlassFloatingBar(
                 )
             },
             highlight = {
-                Highlight.Default.copy(alpha = if (dark) 0.48f else 0.94f)
+                Highlight.Default.copy(alpha = if (dark) 0.36f else 0.88f)
             },
             innerShadow = {
-                InnerShadow(radius = 5.dp, alpha = if (dark) 0.14f else 0.06f)
+                InnerShadow(radius = 4.dp, alpha = if (dark) 0.12f else 0.04f)
             },
             shadow = {
-                Shadow(radius = 22.dp, color = palette.shadowColor)
+                Shadow(radius = 14.dp, color = palette.shadowColor)
             },
             onDrawSurface = { drawRect(surfaceTint) },
         )
     } else {
         Modifier
-            .background(palette.cardBackground.copy(alpha = 0.92f), fallbackShape)
-            .border(0.8.dp, palette.glassSpecBorder, fallbackShape)
+            .background(palette.cardBackground.copy(alpha = 0.94f), fallbackShape)
+            .border(0.6.dp, palette.glassSpecBorder, fallbackShape)
     }
     Box(
         modifier = modifier
@@ -226,9 +219,6 @@ fun LiquidGlassFloatingBar(
     )
 }
 
-/**
- * Compact tactile Liquid Glass capsule button with strong optical refraction and spring press.
- */
 @Composable
 fun LiquidGlassButton(
     onClick: () -> Unit,
@@ -238,8 +228,8 @@ fun LiquidGlassButton(
     tint: Color = Color.Unspecified,
     surfaceColor: Color = LocalGlassPalette.current.glassCrystalSurface,
     contentColor: Color = if (tint != Color.Unspecified) Color.White else MaterialTheme.colorScheme.onSurface,
-    height: Dp = 42.dp,
-    contentPadding: PaddingValues = PaddingValues(horizontal = 16.dp),
+    height: Dp = 36.dp,
+    contentPadding: PaddingValues = PaddingValues(horizontal = 14.dp),
     content: @Composable RowScope.() -> Unit,
 ) {
     val palette = LocalGlassPalette.current
@@ -247,8 +237,8 @@ fun LiquidGlassButton(
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (enabled && pressed) 0.955f else 1f,
-        animationSpec = spring(dampingRatio = 0.6f, stiffness = 550f),
+        targetValue = if (enabled && pressed) 0.96f else 1f,
+        animationSpec = spring(dampingRatio = 0.65f, stiffness = 600f),
         label = "glassBtnScale",
     )
     val glassModifier = if (backdrop != null) {
@@ -257,22 +247,21 @@ fun LiquidGlassButton(
             shape = { Capsule() },
             effects = {
                 vibrancy()
-                blur(5.dp.toPx())
-                lens(11.dp.toPx(), 24.dp.toPx(), depthEffect = true, chromaticAberration = true)
+                blur(10.dp.toPx())
+                lens(7.dp.toPx(), 14.dp.toPx(), depthEffect = true, chromaticAberration = false)
             },
             highlight = {
-                Highlight.Default.copy(alpha = if (tint != Color.Unspecified) 0.65f else if (dark) 0.44f else 0.90f)
+                Highlight.Default.copy(alpha = if (tint != Color.Unspecified) 0.55f else if (dark) 0.34f else 0.85f)
             },
             shadow = {
                 Shadow(
-                    radius = 14.dp,
-                    color = if (tint != Color.Unspecified) tint.copy(alpha = 0.28f) else palette.shadowColor,
+                    radius = 10.dp,
+                    color = if (tint != Color.Unspecified) tint.copy(alpha = 0.22f) else palette.shadowColor,
                 )
             },
             onDrawSurface = {
                 if (tint != Color.Unspecified) {
-                    drawRect(tint, blendMode = BlendMode.Hue)
-                    drawRect(tint.copy(alpha = 0.78f))
+                    drawRect(tint.copy(alpha = 0.90f))
                 } else {
                     drawRect(surfaceColor)
                 }
@@ -281,12 +270,7 @@ fun LiquidGlassButton(
     } else {
         Modifier
             .background(
-                if (tint != Color.Unspecified) tint else palette.cardBackground,
-                Capsule(),
-            )
-            .border(
-                0.8.dp,
-                if (tint != Color.Unspecified) Color.White.copy(alpha = 0.28f) else palette.cardBorder,
+                if (tint != Color.Unspecified) tint else palette.searchBackground,
                 Capsule(),
             )
     }
@@ -308,7 +292,7 @@ fun LiquidGlassButton(
                 onClick = onClick,
             )
             .padding(contentPadding),
-        horizontalArrangement = Arrangement.spacedBy(6.dp, Alignment.CenterHorizontally),
+        horizontalArrangement = Arrangement.spacedBy(5.dp, Alignment.CenterHorizontally),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         CompositionLocalProvider(LocalContentColor provides contentColor) {
@@ -317,9 +301,6 @@ fun LiquidGlassButton(
     }
 }
 
-/**
- * Compact circular crystal glass icon button (34dp default for crisp density).
- */
 @Composable
 fun LiquidGlassIconButton(
     onClick: () -> Unit,
@@ -330,16 +311,16 @@ fun LiquidGlassIconButton(
     backdrop: Backdrop? = LocalContentBackdrop.current,
     tint: Color = Color.Unspecified,
     iconTint: Color = if (tint != Color.Unspecified) Color.White else MaterialTheme.colorScheme.onSurface,
-    size: Dp = 34.dp,
-    iconSize: Dp = 18.dp,
+    size: Dp = 28.dp,
+    iconSize: Dp = 15.5.dp,
 ) {
     val palette = LocalGlassPalette.current
     val dark = LocalIsDarkGlass.current
     val interactionSource = remember { MutableInteractionSource() }
     val pressed by interactionSource.collectIsPressedAsState()
     val scale by animateFloatAsState(
-        targetValue = if (enabled && pressed) 0.90f else 1f,
-        animationSpec = spring(dampingRatio = 0.55f, stiffness = 550f),
+        targetValue = if (enabled && pressed) 0.91f else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 600f),
         label = "glassIconBtnScale",
     )
     val glassModifier = if (backdrop != null) {
@@ -348,27 +329,25 @@ fun LiquidGlassIconButton(
             shape = { Capsule() },
             effects = {
                 vibrancy()
-                blur(4.dp.toPx())
-                lens(8.dp.toPx(), 16.dp.toPx(), depthEffect = true)
+                blur(8.dp.toPx())
+                lens(5.dp.toPx(), 10.dp.toPx(), depthEffect = true, chromaticAberration = false)
             },
-            highlight = { Highlight.Default.copy(alpha = if (dark) 0.45f else 0.90f) },
-            shadow = { Shadow(radius = 8.dp, color = palette.shadowColor) },
+            highlight = { Highlight.Default.copy(alpha = if (dark) 0.36f else 0.85f) },
             onDrawSurface = {
-                if (tint != Color.Unspecified) drawRect(tint.copy(alpha = 0.84f))
+                if (tint != Color.Unspecified) drawRect(tint.copy(alpha = 0.88f))
                 else drawRect(palette.glassCrystalSurface)
             },
         )
     } else {
-        Modifier
-            .background(
-                if (tint != Color.Unspecified) tint else palette.searchBackground,
-                CircleShape,
-            )
+        Modifier.background(
+            if (tint != Color.Unspecified) tint else palette.searchBackground,
+            CircleShape,
+        )
     }
     Box(
         modifier = modifier
             .size(size)
-            .alpha(if (enabled) 1f else 0.42f)
+            .alpha(if (enabled) 1f else 0.40f)
             .graphicsLayer {
                 scaleX = scale
                 scaleY = scale
@@ -391,7 +370,7 @@ fun LiquidGlassIconButton(
 }
 
 /**
- * Compact sleek inline search capsule (36dp height) modeled after top-tier mobile apps.
+ * Sleek 30dp inline search pill inside the seamless white top header (exact reference proportions).
  */
 @Composable
 fun CompactSearchPill(
@@ -407,10 +386,10 @@ fun CompactSearchPill(
     val palette = LocalGlassPalette.current
     Row(
         modifier = modifier
-            .height(36.dp)
+            .height(30.dp)
             .clip(CircleShape)
             .background(palette.searchBackground, CircleShape)
-            .padding(horizontal = 10.dp),
+            .padding(horizontal = 11.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
@@ -419,7 +398,8 @@ fun CompactSearchPill(
                 Text(
                     placeholder,
                     color = MaterialTheme.colorScheme.onSurfaceVariant,
-                    style = MaterialTheme.typography.bodySmall,
+                    fontSize = 12.sp,
+                    lineHeight = 15.sp,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis,
                 )
@@ -428,7 +408,10 @@ fun CompactSearchPill(
                 value = query,
                 onValueChange = onQueryChange,
                 singleLine = true,
-                textStyle = MaterialTheme.typography.bodySmall.copy(color = MaterialTheme.colorScheme.onSurface),
+                textStyle = MaterialTheme.typography.bodySmall.copy(
+                    fontSize = 12.sp,
+                    color = MaterialTheme.colorScheme.onSurface,
+                ),
                 cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
                 keyboardOptions = KeyboardOptions(imeAction = ImeAction.Search),
                 keyboardActions = KeyboardActions(onSearch = { onSearch() }),
@@ -436,26 +419,25 @@ fun CompactSearchPill(
             )
         }
         if (searching) {
-            CircularProgressIndicator(Modifier.size(14.dp), strokeWidth = 1.8.dp)
+            CircularProgressIndicator(Modifier.size(13.dp), strokeWidth = 1.6.dp)
         } else if (query.isNotEmpty()) {
             Box(
                 modifier = Modifier
-                    .size(22.dp)
+                    .size(20.dp)
                     .clickable(onClick = onClear)
                     .semantics { contentDescription = clearContentDescription },
                 contentAlignment = Alignment.Center,
             ) {
-                Icon(Icons.Outlined.Close, clearContentDescription, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                Icon(Icons.Outlined.Close, clearContentDescription, Modifier.size(13.5.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
             }
         } else {
-            Icon(Icons.Outlined.Search, null, Modifier.size(17.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+            Icon(Icons.Outlined.Search, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
         }
     }
 }
 
 /**
- * Lightweight, ultra-clean text filter tabs with sleek underline pill indicator
- * (replaces bloated double-layered segmented bars on main screens).
+ * Reference-style crisp horizontal text tabs with compact emerald underline bar (`头条` style).
  */
 @Composable
 fun CompactFilterTabs(
@@ -466,7 +448,7 @@ fun CompactFilterTabs(
     trailing: (@Composable RowScope.() -> Unit)? = null,
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().height(34.dp),
+        modifier = modifier.fillMaxWidth().height(30.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(18.dp),
     ) {
@@ -478,8 +460,8 @@ fun CompactFilterTabs(
                 label = "filterTabColor",
             )
             val indicatorWidth by animateDpAsState(
-                targetValue = if (selected) 18.dp else 0.dp,
-                animationSpec = spring(dampingRatio = 0.7f, stiffness = 500f),
+                targetValue = if (selected) 15.dp else 0.dp,
+                animationSpec = spring(dampingRatio = 0.75f, stiffness = 550f),
                 label = "filterTabWidth",
             )
             Column(
@@ -496,15 +478,16 @@ fun CompactFilterTabs(
                 Text(
                     text = label,
                     color = textColor,
-                    fontSize = if (selected) 15.sp else 13.5.sp,
-                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Medium,
+                    fontSize = if (selected) 14.sp else 12.5.sp,
+                    lineHeight = 16.sp,
+                    fontWeight = if (selected) FontWeight.Bold else FontWeight.Normal,
                     maxLines = 1,
                 )
-                Spacer(Modifier.height(3.dp))
+                Spacer(Modifier.height(2.dp))
                 Box(
                     Modifier
                         .width(indicatorWidth)
-                        .height(3.dp)
+                        .height(2.5.dp)
                         .background(MaterialTheme.colorScheme.primary, CircleShape),
                 )
             }
@@ -514,16 +497,13 @@ fun CompactFilterTabs(
     }
 }
 
-/**
- * Clean compact segmented pill control for Settings & Bottom Sheets (36dp height).
- */
 @Composable
 fun CompactSegmentedControl(
     items: List<String>,
     selectedIndex: Int,
     onSelect: (Int) -> Unit,
     modifier: Modifier = Modifier,
-    height: Dp = 36.dp,
+    height: Dp = 30.dp,
 ) {
     if (items.isEmpty()) return
     val palette = LocalGlassPalette.current
@@ -534,14 +514,14 @@ fun CompactSegmentedControl(
             .height(height)
             .clip(CircleShape)
             .background(palette.searchBackground, CircleShape)
-            .padding(3.dp),
+            .padding(2.5.dp),
     ) {
         val segmentWidth = maxWidth / items.size
         val density = LocalDensity.current
         val targetOffsetPx = with(density) { (segmentWidth * selectedIndex.coerceIn(0, items.lastIndex)).toPx() }
         val animatedOffsetPx by animateFloatAsState(
             targetValue = targetOffsetPx,
-            animationSpec = spring(dampingRatio = 0.74f, stiffness = Spring.StiffnessMedium),
+            animationSpec = spring(dampingRatio = 0.76f, stiffness = Spring.StiffnessMedium),
             label = "segOffset",
         )
         Box(
@@ -551,7 +531,7 @@ fun CompactSegmentedControl(
                 .fillMaxHeight()
                 .clip(CircleShape)
                 .background(
-                    if (dark) Color(0xFF283347) else Color.White,
+                    if (dark) Color(0xFF283140) else Color.White,
                     CircleShape,
                 ),
         )
@@ -580,7 +560,7 @@ fun CompactSegmentedControl(
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
                         style = MaterialTheme.typography.labelMedium.copy(
-                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+                            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
                         ),
                     )
                 }
@@ -590,44 +570,55 @@ fun CompactSegmentedControl(
 }
 
 /**
- * Compact vibrant squircle icon badge (brings clear visual hierarchy and crisp polish).
+ * Refined soft-tinted or solid rounded icon badge (delicate 26dp–32dp proportions).
  */
 @Composable
 fun SquircleIconBadge(
     icon: ImageVector,
     startColor: Color,
     endColor: Color = startColor,
-    size: Dp = 34.dp,
-    iconSize: Dp = 18.dp,
-    cornerRadius: Dp = 10.dp,
+    size: Dp = 28.dp,
+    iconSize: Dp = 15.dp,
+    cornerRadius: Dp = 9.dp,
+    softTint: Boolean = false,
     modifier: Modifier = Modifier,
 ) {
+    val dark = LocalIsDarkGlass.current
+    val shape = RoundedRectangle(cornerRadius)
+    val bgModifier = if (softTint) {
+        Modifier.background(startColor.copy(alpha = if (dark) 0.20f else 0.12f), shape)
+    } else {
+        Modifier.background(Brush.linearGradient(listOf(startColor, endColor)), shape)
+    }
     Box(
         modifier = modifier
             .size(size)
-            .clip(RoundedRectangle(cornerRadius))
-            .background(
-                Brush.linearGradient(listOf(startColor, endColor)),
-                RoundedRectangle(cornerRadius),
-            ),
+            .clip(shape)
+            .then(bgModifier),
         contentAlignment = Alignment.Center,
     ) {
-        Icon(icon, contentDescription = null, modifier = Modifier.size(iconSize), tint = Color.White)
+        Icon(
+            icon,
+            contentDescription = null,
+            modifier = Modifier.size(iconSize),
+            tint = if (softTint) startColor else Color.White,
+        )
     }
 }
 
 data class LiquidDockTab(
     val label: String,
     val icon: ImageVector,
+    val selectedIcon: ImageVector = icon,
 )
 
 /**
- * Signature 5-slot True Crystal Apple Liquid Glass Floating Bottom Dock:
- *   [ Tab 0 ]  [ Tab 1 ]   ( + Crystal Pill )   [ Tab 2 ]  [ Tab 3 ]
+ * Sleek 48dp 5-slot Frosted Liquid Glass Floating Dock modeled directly after Coolapk v15:
+ *   [ 首页/会话 ]   [ 工作区 ]   ( + Jade Capsule )   [ 文件 ]   [ 设置 ]
  *
- * Uses Kyant0/AndroidLiquidGlass with TRUE crystal transparency (low surface alpha + light blur +
- * pronounced optical lens refraction + chromatic aberration) so scrolling cards and colorful icons
- * visibly bend and glow straight through the floating dock!
+ * Uses smooth frosted blur + clean curved rim lens refraction (NO chromatic rainbow smear),
+ * a soft shaded inner capsule for the active tab with emerald icon/text, crisp solid dark icons
+ * for inactive tabs, and a compact jade-green center `+` capsule.
  */
 @Composable
 fun LiquidGlassDock(
@@ -656,52 +647,72 @@ fun LiquidGlassDock(
             shape = { Capsule() },
             effects = {
                 vibrancy()
-                blur(5.dp.toPx())
+                blur(9.dp.toPx())
                 lens(
-                    refractionHeight = 16.dp.toPx(),
-                    refractionAmount = 36.dp.toPx(),
+                    refractionHeight = 11.dp.toPx(),
+                    refractionAmount = 22.dp.toPx(),
                     depthEffect = true,
-                    chromaticAberration = true,
+                    chromaticAberration = false,
                 )
             },
-            highlight = { Highlight.Default.copy(alpha = if (dark) 0.52f else 0.96f) },
-            innerShadow = { InnerShadow(radius = 6.dp, alpha = if (dark) 0.16f else 0.06f) },
-            shadow = { Shadow(radius = 24.dp, color = palette.shadowColor) },
+            highlight = { Highlight.Default.copy(alpha = if (dark) 0.36f else 0.90f) },
+            innerShadow = { InnerShadow(radius = 4.dp, alpha = if (dark) 0.12f else 0.04f) },
+            shadow = { Shadow(radius = 16.dp, color = palette.shadowColor) },
             onDrawSurface = { drawRect(palette.glassDockSurface) },
         )
     } else {
         Modifier
-            .background(palette.cardBackground.copy(alpha = 0.92f), Capsule())
-            .border(0.8.dp, palette.glassSpecBorder, Capsule())
+            .background(palette.cardBackground.copy(alpha = 0.94f), Capsule())
+            .border(0.6.dp, palette.glassSpecBorder, Capsule())
     }
 
     val centerInteraction = remember { MutableInteractionSource() }
     val centerPressed by centerInteraction.collectIsPressedAsState()
     val centerScale by animateFloatAsState(
-        targetValue = if (centerActionEnabled && centerPressed) 0.91f else 1f,
-        animationSpec = spring(dampingRatio = 0.55f, stiffness = 550f),
+        targetValue = if (centerActionEnabled && centerPressed) 0.92f else 1f,
+        animationSpec = spring(dampingRatio = 0.6f, stiffness = 600f),
         label = "centerPlusScale",
     )
 
     BoxWithConstraints(
         modifier = modifier
             .fillMaxWidth()
-            .height(58.dp)
+            .height(48.dp)
             .then(barModifier)
-            .padding(horizontal = 5.dp, vertical = 4.dp),
+            .padding(horizontal = 4.dp, vertical = 3.dp),
     ) {
         val slotWidth = maxWidth / 5
         val density = LocalDensity.current
-        // Map 4 logical tabs (0, 1, 2, 3) to 5 visual slots (0, 1, [center=2], 3, 4)
         val visualSlot = if (selectedIndex < 2) selectedIndex else selectedIndex + 1
         val targetOffsetPx = with(density) { (slotWidth * visualSlot).toPx() }
         val animatedOffsetPx by animateFloatAsState(
             targetValue = targetOffsetPx,
-            animationSpec = spring(dampingRatio = 0.72f, stiffness = 460f),
+            animationSpec = spring(dampingRatio = 0.74f, stiffness = 480f),
             label = "dockIndicatorOffset",
         )
 
-        // Base 5-column row captured into dockInnerBackdrop
+        // Soft shaded frosted active pill BEHIND the active tab (exact Coolapk v15 look!)
+        Box(
+            modifier = Modifier
+                .offset { IntOffset(animatedOffsetPx.roundToInt(), 0) }
+                .width(slotWidth)
+                .fillMaxHeight()
+                .drawBackdrop(
+                    backdrop = combinedBackdrop,
+                    shape = { Capsule() },
+                    effects = {
+                        lens(
+                            refractionHeight = 3.dp.toPx(),
+                            refractionAmount = 6.dp.toPx(),
+                            depthEffect = false,
+                            chromaticAberration = false,
+                        )
+                    },
+                    highlight = { Highlight.Default.copy(alpha = if (dark) 0.30f else 0.70f) },
+                    onDrawSurface = { drawRect(palette.glassActivePillTint) },
+                ),
+        )
+
         Row(
             modifier = Modifier
                 .fillMaxSize()
@@ -715,48 +726,25 @@ fun LiquidGlassDock(
             DockTabCell(tabs[3], selectedIndex == 3, Modifier.weight(1f)) { onSelect(3) }
         }
 
-        // Gliding Crystal Lens Active Indicator Pill (clean glass lens around active tab)
-        Box(
-            modifier = Modifier
-                .offset { IntOffset(animatedOffsetPx.roundToInt(), 0) }
-                .width(slotWidth)
-                .fillMaxHeight()
-                .drawBackdrop(
-                    backdrop = combinedBackdrop,
-                    shape = { Capsule() },
-                    effects = {
-                        lens(
-                            refractionHeight = 4.dp.toPx(),
-                            refractionAmount = 8.dp.toPx(),
-                            depthEffect = false,
-                            chromaticAberration = false,
-                        )
-                    },
-                    highlight = { Highlight.Default.copy(alpha = if (dark) 0.45f else 0.88f) },
-                    innerShadow = { InnerShadow(radius = 4.dp, alpha = if (dark) 0.14f else 0.05f) },
-                    onDrawSurface = { drawRect(palette.glassActivePillTint) },
-                ),
-        )
-
-        // Center Floating Crystal Glass (+) Pill Button (signature focal accent!)
-        val centerTint = palette.accentBlue
+        // Compact Jade Green Center (+) Capsule (44dp × 31dp)
+        val jadeStart = palette.accentJadeBright
+        val jadeEnd = palette.accentJade
         val centerGlassModifier = if (backdrop != null) {
             Modifier.drawBackdrop(
                 backdrop = backdrop,
                 shape = { Capsule() },
                 effects = {
-                    vibrancy()
-                    blur(4.dp.toPx())
-                    lens(11.dp.toPx(), 24.dp.toPx(), depthEffect = true, chromaticAberration = true)
+                    blur(6.dp.toPx())
+                    lens(6.dp.toPx(), 12.dp.toPx(), depthEffect = true, chromaticAberration = false)
                 },
-                highlight = { Highlight.Default.copy(alpha = 0.75f) },
-                shadow = { Shadow(radius = 12.dp, color = centerTint.copy(alpha = 0.32f)) },
+                highlight = { Highlight.Default.copy(alpha = 0.55f) },
+                shadow = { Shadow(radius = 8.dp, color = jadeEnd.copy(alpha = 0.28f)) },
                 onDrawSurface = {
                     drawRect(
-                        Brush.linearGradient(
+                        Brush.verticalGradient(
                             listOf(
-                                centerTint.copy(alpha = 0.84f),
-                                palette.accentCyan.copy(alpha = 0.82f),
+                                jadeStart.copy(alpha = 0.92f),
+                                jadeEnd.copy(alpha = 0.94f),
                             ),
                         ),
                     )
@@ -764,7 +752,7 @@ fun LiquidGlassDock(
             )
         } else {
             Modifier.background(
-                Brush.linearGradient(listOf(centerTint, palette.accentCyan)),
+                Brush.verticalGradient(listOf(jadeStart, jadeEnd)),
                 Capsule(),
             )
         }
@@ -772,8 +760,8 @@ fun LiquidGlassDock(
         Box(
             modifier = Modifier
                 .align(Alignment.Center)
-                .width(54.dp)
-                .height(38.dp)
+                .width(44.dp)
+                .height(31.dp)
                 .alpha(if (centerActionEnabled) 1f else 0.45f)
                 .graphicsLayer {
                     scaleX = centerScale
@@ -793,7 +781,7 @@ fun LiquidGlassDock(
             Icon(
                 Icons.Outlined.Add,
                 contentDescription = centerActionDescription,
-                modifier = Modifier.size(22.dp),
+                modifier = Modifier.size(18.dp),
                 tint = Color.White,
             )
         }
@@ -807,10 +795,14 @@ private fun DockTabCell(
     modifier: Modifier,
     onClick: () -> Unit,
 ) {
-    val tint by animateColorAsState(
-        targetValue = if (selected) MaterialTheme.colorScheme.primary
-        else MaterialTheme.colorScheme.onSurface.copy(alpha = 0.68f),
-        label = "dockTabTint",
+    val palette = LocalGlassPalette.current
+    val iconColor by animateColorAsState(
+        targetValue = if (selected) palette.accentJade else palette.dockInactiveIcon,
+        label = "dockIconTint",
+    )
+    val labelColor by animateColorAsState(
+        targetValue = if (selected) palette.accentJade else palette.dockInactiveLabel,
+        label = "dockLabelTint",
     )
     Column(
         modifier = modifier
@@ -822,17 +814,22 @@ private fun DockTabCell(
                 onClick = onClick,
             ),
         horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp, Alignment.CenterVertically),
+        verticalArrangement = Arrangement.spacedBy(1.dp, Alignment.CenterVertically),
     ) {
-        Icon(tab.icon, contentDescription = tab.label, modifier = Modifier.size(20.dp), tint = tint)
+        Icon(
+            if (selected) tab.selectedIcon else tab.icon,
+            contentDescription = tab.label,
+            modifier = Modifier.size(18.dp),
+            tint = iconColor,
+        )
         Text(
             text = tab.label,
-            color = tint,
+            color = labelColor,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
-            fontSize = 10.sp,
-            lineHeight = 12.sp,
-            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Medium,
+            fontSize = 9.5.sp,
+            lineHeight = 11.5.sp,
+            fontWeight = if (selected) FontWeight.SemiBold else FontWeight.Normal,
         )
     }
 }

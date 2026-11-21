@@ -3,6 +3,7 @@ package io.github.hakunm.deepseekharness.ui
 import android.content.Context
 import android.net.Uri
 import android.provider.OpenableColumns
+import androidx.activity.compose.BackHandler
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -15,7 +16,6 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
-import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -30,7 +30,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.text.BasicTextField
@@ -89,6 +88,7 @@ import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.kyant.backdrop.backdrops.layerBackdrop
 import com.kyant.backdrop.backdrops.rememberLayerBackdrop
 import com.mikepenz.markdown.m3.Markdown
@@ -119,6 +119,10 @@ fun FilesScreen(
     var createDirectory by remember { mutableStateOf<Boolean?>(null) }
     var moveDialog by remember { mutableStateOf(false) }
     var trashDialog by remember { mutableStateOf(false) }
+
+    BackHandler(enabled = !wide && state.document != null) {
+        viewModel.loadDirectory()
+    }
 
     LaunchedEffect(externalCreateDirectory) {
         if (externalCreateDirectory != null) {
@@ -156,8 +160,8 @@ fun FilesScreen(
     }
     if (wide) {
         Row(
-            Modifier.fillMaxSize().padding(end = 10.dp, top = 8.dp, bottom = 8.dp),
-            horizontalArrangement = Arrangement.spacedBy(10.dp),
+            Modifier.fillMaxSize().padding(end = 8.dp, top = 6.dp, bottom = 6.dp),
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             FileBrowser(
                 state = state,
@@ -167,7 +171,7 @@ fun FilesScreen(
                 onUpload = { uploadLauncher.launch(arrayOf("*/*")) },
                 onTrash = { viewModel.loadTrash(); trashDialog = true },
                 bottomDockInset = bottomDockInset,
-                modifier = Modifier.width(340.dp).fillMaxHeight(),
+                modifier = Modifier.width(310.dp).fillMaxHeight(),
             )
             EditorPane(
                 state = state,
@@ -188,7 +192,7 @@ fun FilesScreen(
             onUpload = { uploadLauncher.launch(arrayOf("*/*")) },
             onTrash = { viewModel.loadTrash(); trashDialog = true },
             bottomDockInset = bottomDockInset,
-            modifier = Modifier.fillMaxSize().statusBarsPadding(),
+            modifier = Modifier.fillMaxSize(),
         )
     } else {
         EditorPane(
@@ -230,136 +234,144 @@ private fun FileBrowser(
     val fileSearchResults = state.fileSearchResults
     val searchActive = fileSearchResults != null
 
-    Column(
-        modifier.padding(horizontal = 12.dp),
-        verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) {
-        // Compact Single-Row Top Bar: Root pill + Inline Search Capsule + Compact Action Icons
-        Row(
-            Modifier.fillMaxWidth().padding(top = 6.dp),
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(5.dp),
+    Column(modifier) {
+        // Seamless Pure White/Dark Top Header Zone (matching Home screen!)
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .background(palette.headerBackground)
+                .statusBarsPadding()
+                .padding(horizontal = 10.dp, vertical = 5.dp),
+            verticalArrangement = Arrangement.spacedBy(3.dp),
         ) {
-            Box {
+            Row(
+                Modifier.fillMaxWidth(),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(5.dp),
+            ) {
+                Box {
+                    Row(
+                        modifier = Modifier
+                            .height(28.dp)
+                            .clip(CircleShape)
+                            .background(palette.searchBackground, CircleShape)
+                            .clickable { rootMenu = true }
+                            .padding(horizontal = 8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(3.dp),
+                    ) {
+                        Icon(Icons.Outlined.FolderOpen, null, Modifier.size(13.5.dp), tint = MaterialTheme.colorScheme.primary)
+                        Text(
+                            state.roots.find { it.id == state.selectedRootId }?.label.orEmpty(),
+                            modifier = Modifier.widthIn(max = 76.dp),
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis,
+                            style = MaterialTheme.typography.labelMedium,
+                        )
+                        Icon(Icons.Outlined.ExpandMore, null, Modifier.size(13.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
+                    }
+                    DropdownMenu(expanded = rootMenu, onDismissRequest = { rootMenu = false }) {
+                        state.roots.forEach { root ->
+                            DropdownMenuItem(
+                                text = { Text(root.label) },
+                                onClick = { viewModel.selectRoot(root.id); rootMenu = false },
+                            )
+                        }
+                    }
+                }
+
+                CompactSearchPill(
+                    query = state.fileSearchQuery,
+                    onQueryChange = viewModel::setFileSearchQuery,
+                    onSearch = { viewModel.searchFiles() },
+                    onClear = viewModel::clearFileSearch,
+                    placeholder = stringResource(R.string.search_files_hint),
+                    searching = state.searchingFiles,
+                    clearContentDescription = stringResource(R.string.clear_search),
+                    modifier = Modifier.weight(1f),
+                )
+
+                Box {
+                    IconButton(onClick = { createMenu = true }, enabled = canWrite, modifier = Modifier.size(27.dp)) {
+                        Icon(Icons.Outlined.CreateNewFolder, stringResource(R.string.create), Modifier.size(17.dp))
+                    }
+                    DropdownMenu(expanded = createMenu, onDismissRequest = { createMenu = false }) {
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.new_file)) },
+                            leadingIcon = { Icon(Icons.AutoMirrored.Outlined.InsertDriveFile, null) },
+                            onClick = { createMenu = false; onNewFile() },
+                        )
+                        DropdownMenuItem(
+                            text = { Text(stringResource(R.string.new_folder)) },
+                            leadingIcon = { Icon(Icons.Outlined.Folder, null) },
+                            onClick = { createMenu = false; onNewFolder() },
+                        )
+                    }
+                }
+                IconButton(onClick = onUpload, enabled = canWrite, modifier = Modifier.size(27.dp)) {
+                    Icon(Icons.Outlined.UploadFile, stringResource(R.string.upload), Modifier.size(17.dp))
+                }
+                IconButton(onClick = onTrash, modifier = Modifier.size(27.dp)) {
+                    Icon(Icons.Outlined.RestoreFromTrash, stringResource(R.string.trash), Modifier.size(17.dp))
+                }
+            }
+
+            if (fileSearchResults == null) {
                 Row(
-                    modifier = Modifier
-                        .height(36.dp)
-                        .clip(CircleShape)
-                        .background(palette.cardBackground, CircleShape)
-                        .clickable { rootMenu = true }
-                        .padding(horizontal = 8.dp),
+                    Modifier.fillMaxWidth().height(24.dp),
                     verticalAlignment = Alignment.CenterVertically,
                     horizontalArrangement = Arrangement.spacedBy(3.dp),
                 ) {
-                    Icon(Icons.Outlined.FolderOpen, null, Modifier.size(15.dp), tint = MaterialTheme.colorScheme.primary)
+                    IconButton(
+                        onClick = { viewModel.loadDirectory(state.currentPath.substringBeforeLast('/', "")) },
+                        enabled = state.currentPath.isNotEmpty(),
+                        modifier = Modifier.size(22.dp),
+                    ) {
+                        Icon(Icons.Outlined.ArrowUpward, stringResource(R.string.go_up), Modifier.size(13.5.dp))
+                    }
                     Text(
-                        state.roots.find { it.id == state.selectedRootId }?.label.orEmpty(),
-                        modifier = Modifier.widthIn(max = 84.dp),
+                        "/${state.currentPath}",
+                        modifier = Modifier.weight(1f),
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
-                        style = MaterialTheme.typography.labelMedium,
+                        style = MaterialTheme.typography.labelSmall.copy(fontFamily = FontFamily.Monospace),
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
                     )
-                    Icon(Icons.Outlined.ExpandMore, null, Modifier.size(14.dp), tint = MaterialTheme.colorScheme.onSurfaceVariant)
-                }
-                DropdownMenu(expanded = rootMenu, onDismissRequest = { rootMenu = false }) {
-                    state.roots.forEach { root ->
-                        DropdownMenuItem(
-                            text = { Text(root.label) },
-                            onClick = { viewModel.selectRoot(root.id); rootMenu = false },
+                    IconButton(onClick = { viewModel.loadDirectory() }, modifier = Modifier.size(22.dp)) {
+                        Icon(
+                            Icons.Outlined.Refresh,
+                            stringResource(R.string.refresh),
+                            Modifier.size(13.5.dp),
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
                         )
                     }
                 }
-            }
-
-            CompactSearchPill(
-                query = state.fileSearchQuery,
-                onQueryChange = viewModel::setFileSearchQuery,
-                onSearch = { viewModel.searchFiles() },
-                onClear = viewModel::clearFileSearch,
-                placeholder = stringResource(R.string.search_files_hint),
-                searching = state.searchingFiles,
-                clearContentDescription = stringResource(R.string.clear_search),
-                modifier = Modifier.weight(1f),
-            )
-
-            Box {
-                IconButton(onClick = { createMenu = true }, enabled = canWrite, modifier = Modifier.size(32.dp)) {
-                    Icon(Icons.Outlined.CreateNewFolder, stringResource(R.string.create), Modifier.size(19.dp))
-                }
-                DropdownMenu(expanded = createMenu, onDismissRequest = { createMenu = false }) {
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.new_file)) },
-                        leadingIcon = { Icon(Icons.AutoMirrored.Outlined.InsertDriveFile, null) },
-                        onClick = { createMenu = false; onNewFile() },
-                    )
-                    DropdownMenuItem(
-                        text = { Text(stringResource(R.string.new_folder)) },
-                        leadingIcon = { Icon(Icons.Outlined.Folder, null) },
-                        onClick = { createMenu = false; onNewFolder() },
-                    )
-                }
-            }
-            IconButton(onClick = onUpload, enabled = canWrite, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Outlined.UploadFile, stringResource(R.string.upload), Modifier.size(19.dp))
-            }
-            IconButton(onClick = onTrash, modifier = Modifier.size(32.dp)) {
-                Icon(Icons.Outlined.RestoreFromTrash, stringResource(R.string.trash), Modifier.size(19.dp))
-            }
-        }
-
-        // Sleek Breadcrumb / Search Header Bar
-        if (fileSearchResults == null) {
-            Row(
-                Modifier.fillMaxWidth().height(30.dp).padding(horizontal = 2.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(4.dp),
-            ) {
-                IconButton(
-                    onClick = { viewModel.loadDirectory(state.currentPath.substringBeforeLast('/', "")) },
-                    enabled = state.currentPath.isNotEmpty(),
-                    modifier = Modifier.size(28.dp),
+            } else {
+                Row(
+                    Modifier.fillMaxWidth().padding(horizontal = 2.dp, vertical = 2.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.SpaceBetween,
                 ) {
-                    Icon(Icons.Outlined.ArrowUpward, stringResource(R.string.go_up), Modifier.size(16.dp))
-                }
-                Text(
-                    "/${state.currentPath}",
-                    modifier = Modifier.weight(1f),
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis,
-                    style = MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
-                    color = MaterialTheme.colorScheme.onSurfaceVariant,
-                )
-                IconButton(onClick = { viewModel.loadDirectory() }, modifier = Modifier.size(28.dp)) {
-                    Icon(
-                        Icons.Outlined.Refresh,
-                        stringResource(R.string.refresh),
-                        Modifier.size(16.dp),
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                    )
-                }
-            }
-        } else {
-            Row(
-                Modifier.fillMaxWidth().padding(horizontal = 4.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.SpaceBetween,
-            ) {
-                Column(Modifier.weight(1f)) {
-                    Text(
-                        stringResource(R.string.search_results_count, fileSearchResults.entries.size),
-                        style = MaterialTheme.typography.labelMedium,
-                        color = MaterialTheme.colorScheme.primary,
-                    )
-                    if (fileSearchResults.truncated) {
+                    Column(Modifier.weight(1f)) {
                         Text(
-                            stringResource(R.string.search_truncated),
+                            stringResource(R.string.search_results_count, fileSearchResults.entries.size),
                             style = MaterialTheme.typography.labelSmall,
-                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            color = MaterialTheme.colorScheme.primary,
                         )
+                        if (fileSearchResults.truncated) {
+                            Text(
+                                stringResource(R.string.search_truncated),
+                                style = MaterialTheme.typography.labelSmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            )
+                        }
                     }
-                }
-                TextButton(onClick = viewModel::clearFileSearch, contentPadding = PaddingValues(horizontal = 8.dp)) {
-                    Text(stringResource(R.string.clear_search), style = MaterialTheme.typography.labelMedium)
+                    Text(
+                        stringResource(R.string.clear_search),
+                        color = MaterialTheme.colorScheme.primary,
+                        style = MaterialTheme.typography.labelSmall,
+                        modifier = Modifier.clickable(onClick = viewModel::clearFileSearch).padding(horizontal = 6.dp, vertical = 2.dp),
+                    )
                 }
             }
         }
@@ -376,12 +388,12 @@ private fun FileBrowser(
         } else {
             LazyColumn(
                 Modifier.weight(1f).fillMaxWidth(),
-                contentPadding = PaddingValues(bottom = bottomDockInset + 14.dp),
+                contentPadding = PaddingValues(start = 8.dp, end = 8.dp, top = 6.dp, bottom = bottomDockInset + 10.dp),
             ) {
                 item("file-list-card") {
                     CrispCard(
                         modifier = Modifier.fillMaxWidth(),
-                        cornerRadius = 16.dp,
+                        cornerRadius = 10.dp,
                         contentPadding = PaddingValues(0.dp),
                     ) {
                         Column(Modifier.fillMaxWidth()) {
@@ -393,7 +405,7 @@ private fun FileBrowser(
                                     onAction = { viewModel.selectEntryForAction(entry) },
                                 )
                                 if (index != entries.lastIndex) {
-                                    HorizontalDivider(Modifier.padding(start = 56.dp), color = palette.divider)
+                                    HorizontalDivider(Modifier.padding(start = 46.dp), color = palette.divider)
                                 }
                             }
                         }
@@ -401,9 +413,9 @@ private fun FileBrowser(
                 }
                 if (!searchActive && state.directory?.nextCursor != null) {
                     item("load-more-files") {
-                        Box(Modifier.fillMaxWidth().padding(vertical = 8.dp), contentAlignment = Alignment.Center) {
+                        Box(Modifier.fillMaxWidth().padding(vertical = 6.dp), contentAlignment = Alignment.Center) {
                             TextButton(onClick = viewModel::loadNextDirectoryPage) {
-                                Text(stringResource(R.string.load_more))
+                                Text(stringResource(R.string.load_more), style = MaterialTheme.typography.labelMedium)
                             }
                         }
                     }
@@ -423,43 +435,60 @@ private fun FileCompactRow(
     val palette = LocalGlassPalette.current
     val isDir = entry.kind == "directory"
     val ext = entry.name.substringAfterLast('.', "").lowercase()
-    val (icon, c1, c2) = when {
-        isDir -> Triple(Icons.Outlined.Folder, palette.accentBlue, palette.accentCyan)
-        ext in setOf("md", "markdown", "txt") -> Triple(Icons.Outlined.Description, palette.accentIndigo, palette.accentBlue)
-        ext in setOf("ts", "tsx", "js", "jsx", "kt", "java", "py", "rs", "go") -> Triple(Icons.Outlined.Code, palette.accentCyan, palette.accentEmerald)
-        ext in setOf("json", "yaml", "yml", "toml", "xml") -> Triple(Icons.Outlined.DataObject, palette.accentAmber, palette.accentCoral)
-        else -> Triple(Icons.AutoMirrored.Outlined.InsertDriveFile, MaterialTheme.colorScheme.outline, MaterialTheme.colorScheme.outline)
+    val (icon, tint) = when {
+        isDir -> Icons.Outlined.Folder to palette.accentBlue
+        ext in setOf("md", "markdown", "txt") -> Icons.Outlined.Description to palette.accentIndigo
+        ext in setOf("ts", "tsx", "js", "jsx", "kt", "java", "py", "rs", "go") -> Icons.Outlined.Code to palette.accentJade
+        ext in setOf("json", "yaml", "yml", "toml", "xml") -> Icons.Outlined.DataObject to palette.accentAmber
+        else -> Icons.AutoMirrored.Outlined.InsertDriveFile to MaterialTheme.colorScheme.outline
     }
     val kindLabel = stringResource(if (isDir) R.string.file_kind_directory else R.string.file_kind_file)
-    val subtitle = when {
+    val meta = when {
         showRelativePath && !isDir -> "${entry.path} · ${formatBytes(entry.size)}"
         showRelativePath -> entry.path
         isDir -> kindLabel
-        else -> "$kindLabel · ${formatBytes(entry.size)}"
+        else -> formatBytes(entry.size)
     }
     Row(
         modifier = Modifier
             .fillMaxWidth()
             .clickable(onClick = onOpen)
-            .padding(horizontal = 12.dp, vertical = 9.dp),
+            .padding(horizontal = 11.dp, vertical = 7.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        SquircleIconBadge(icon = icon, startColor = c1, endColor = c2, size = 34.dp, iconSize = 18.dp, cornerRadius = 10.dp)
-        Column(Modifier.weight(1f).padding(horizontal = 11.dp)) {
+        SquircleIconBadge(
+            icon = icon,
+            startColor = tint,
+            size = 24.dp,
+            iconSize = 14.dp,
+            cornerRadius = 6.5.dp,
+            softTint = true,
+        )
+        Column(Modifier.weight(1f).padding(horizontal = 9.dp)) {
             Text(entry.name, maxLines = 1, overflow = TextOverflow.Ellipsis, style = MaterialTheme.typography.titleSmall)
+            if (showRelativePath) {
+                Text(
+                    meta,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant,
+                )
+            }
+        }
+        if (!showRelativePath) {
             Text(
-                subtitle,
-                maxLines = 1,
-                overflow = TextOverflow.Ellipsis,
+                meta,
                 style = MaterialTheme.typography.labelSmall,
                 color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.padding(end = 4.dp),
             )
         }
-        IconButton(onClick = onAction, modifier = Modifier.size(30.dp)) {
+        IconButton(onClick = onAction, modifier = Modifier.size(24.dp)) {
             Icon(
                 Icons.Outlined.MoreVert,
                 stringResource(R.string.file_actions),
-                Modifier.size(17.dp),
+                Modifier.size(15.dp),
                 tint = MaterialTheme.colorScheme.onSurfaceVariant,
             )
         }
@@ -494,7 +523,6 @@ private fun EditorPane(
     val editorBackdrop = rememberLayerBackdrop()
 
     Box(modifier.imePadding()) {
-        // Layer 1: Full-bleed crisp document content captured into editorBackdrop
         Box(
             Modifier
                 .fillMaxSize()
@@ -518,7 +546,7 @@ private fun EditorPane(
                             .navigationBarsPadding()
                             .pinchToZoom(document.entry.path, applyZoom)
                             .verticalScroll(rememberScrollState())
-                            .padding(start = 16.dp, end = 16.dp, top = 66.dp, bottom = 74.dp),
+                            .padding(start = 14.dp, end = 14.dp, top = 52.dp, bottom = 58.dp),
                     ) {
                         Markdown(
                             content = document.text,
@@ -532,7 +560,7 @@ private fun EditorPane(
                         value = document.text,
                         onValueChange = viewModel::updateDocument,
                         scale = textScale,
-                        topInset = 64.dp,
+                        topInset = 50.dp,
                         modifier = Modifier
                             .fillMaxSize()
                             .statusBarsPadding()
@@ -543,16 +571,16 @@ private fun EditorPane(
             }
         }
 
-        // Layer 2: Compact Floating Crystal Liquid Glass Header Bar (real refraction over scrolled code/Markdown!)
+        // Sleek 36dp Floating Frosted Liquid Glass Header Capsule
         LiquidGlassFloatingBar(
             modifier = Modifier
                 .align(Alignment.TopCenter)
                 .fillMaxWidth()
                 .statusBarsPadding()
-                .padding(horizontal = 10.dp, vertical = 6.dp),
+                .padding(horizontal = 10.dp, vertical = 5.dp),
             capsule = true,
             backdrop = editorBackdrop,
-            contentPadding = PaddingValues(horizontal = 8.dp, vertical = 5.dp),
+            contentPadding = PaddingValues(horizontal = 7.dp, vertical = 4.dp),
         ) {
             Row(
                 Modifier.fillMaxWidth(),
@@ -565,11 +593,11 @@ private fun EditorPane(
                         icon = Icons.AutoMirrored.Outlined.ArrowBack,
                         contentDescription = stringResource(R.string.back),
                         backdrop = editorBackdrop,
-                        size = 32.dp,
-                        iconSize = 17.dp,
+                        size = 27.dp,
+                        iconSize = 15.dp,
                     )
                 }
-                Column(Modifier.weight(1f).padding(horizontal = 3.dp)) {
+                Column(Modifier.weight(1f).padding(horizontal = 2.dp)) {
                     Text(
                         document.entry.name,
                         style = MaterialTheme.typography.titleSmall,
@@ -578,7 +606,8 @@ private fun EditorPane(
                     )
                     Text(
                         document.entry.path,
-                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 9.5.sp,
+                        lineHeight = 12.sp,
                         color = MaterialTheme.colorScheme.onSurfaceVariant,
                         maxLines = 1,
                         overflow = TextOverflow.Ellipsis,
@@ -588,9 +617,9 @@ private fun EditorPane(
                     Row(
                         modifier = Modifier
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.primary.copy(alpha = 0.13f), CircleShape)
+                            .background(palette.chipSelectedBackground, CircleShape)
                             .clickable { markdownPreview = !markdownPreview }
-                            .padding(horizontal = 9.dp, vertical = 5.dp),
+                            .padding(horizontal = 8.dp, vertical = 3.dp),
                         verticalAlignment = Alignment.CenterVertically,
                     ) {
                         Text(
@@ -608,8 +637,8 @@ private fun EditorPane(
                         "files.write" in state.device?.scopes.orEmpty(),
                     backdrop = editorBackdrop,
                     tint = if (document.text != null && document.entry.writable) MaterialTheme.colorScheme.primary else Color.Unspecified,
-                    size = 32.dp,
-                    iconSize = 16.dp,
+                    size = 27.dp,
+                    iconSize = 14.5.dp,
                 )
                 Box {
                     LiquidGlassIconButton(
@@ -617,8 +646,8 @@ private fun EditorPane(
                         icon = Icons.Outlined.MoreVert,
                         contentDescription = stringResource(R.string.file_actions),
                         backdrop = editorBackdrop,
-                        size = 32.dp,
-                        iconSize = 17.dp,
+                        size = 27.dp,
+                        iconSize = 15.dp,
                     )
                     DropdownMenu(expanded = actionsExpanded, onDismissRequest = { actionsExpanded = false }) {
                         DropdownMenuItem(
@@ -650,37 +679,38 @@ private fun EditorPane(
             }
         }
 
-        // Layer 3: Compact Floating Crystal Liquid Glass Zoom Capsule in Bottom-Right!
+        // Sleek 28dp Floating Frosted Liquid Glass Zoom Pill in Bottom-Right
         if (document.text != null) {
             LiquidGlassFloatingBar(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
                     .navigationBarsPadding()
-                    .padding(horizontal = 12.dp, vertical = 10.dp),
+                    .padding(horizontal = 10.dp, vertical = 8.dp),
                 capsule = true,
                 backdrop = editorBackdrop,
-                contentPadding = PaddingValues(horizontal = 6.dp, vertical = 3.dp),
+                contentPadding = PaddingValues(horizontal = 5.dp, vertical = 2.dp),
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(1.dp)) {
                     IconButton(
                         onClick = { textScale = (textScale - TEXT_SCALE_STEP).coerceAtLeast(MIN_TEXT_SCALE) },
                         enabled = textScale > MIN_TEXT_SCALE,
-                        modifier = Modifier.size(30.dp),
+                        modifier = Modifier.size(24.dp),
                     ) {
-                        Icon(Icons.Outlined.ZoomOut, stringResource(R.string.zoom_out), Modifier.size(16.dp))
+                        Icon(Icons.Outlined.ZoomOut, stringResource(R.string.zoom_out), Modifier.size(13.5.dp))
                     }
                     Text(
                         "${(textScale * 100).roundToInt()}%",
-                        modifier = Modifier.width(40.dp).clickable(enabled = textScale != 1f) { textScale = 1f },
+                        modifier = Modifier.width(34.dp).clickable(enabled = textScale != 1f) { textScale = 1f },
                         textAlign = TextAlign.Center,
-                        style = MaterialTheme.typography.labelSmall,
+                        fontSize = 10.sp,
+                        lineHeight = 12.sp,
                     )
                     IconButton(
                         onClick = { textScale = (textScale + TEXT_SCALE_STEP).coerceAtMost(MAX_TEXT_SCALE) },
                         enabled = textScale < MAX_TEXT_SCALE,
-                        modifier = Modifier.size(30.dp),
+                        modifier = Modifier.size(24.dp),
                     ) {
-                        Icon(Icons.Outlined.ZoomIn, stringResource(R.string.zoom_in), Modifier.size(16.dp))
+                        Icon(Icons.Outlined.ZoomIn, stringResource(R.string.zoom_in), Modifier.size(13.5.dp))
                     }
                 }
             }
@@ -700,9 +730,13 @@ private fun NumberedTextEditor(
     val horizontal = rememberScrollState()
     val lineCount = value.count { it == '\n' } + 1
     val digits = lineCount.toString().length
-    val gutterWidth = (digits * 8 * scale + 22).dp
+    val gutterWidth = (digits * 7 * scale + 18).dp
     val codeStyle = scaledTextStyle(
-        MaterialTheme.typography.bodySmall.copy(fontFamily = FontFamily.Monospace),
+        TextStyle(
+            fontFamily = FontFamily.Monospace,
+            fontSize = 11.5.sp,
+            lineHeight = 16.5.sp,
+        ),
         scale,
     )
     Row(modifier) {
@@ -710,7 +744,7 @@ private fun NumberedTextEditor(
             Modifier
                 .width(gutterWidth)
                 .fillMaxHeight()
-                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.035f))
+                .background(MaterialTheme.colorScheme.onSurface.copy(alpha = 0.03f))
                 .clipToBounds(),
         ) {
             Text(
@@ -718,10 +752,10 @@ private fun NumberedTextEditor(
                 modifier = Modifier
                     .fillMaxWidth()
                     .offset { IntOffset(0, -vertical.value) }
-                    .padding(top = topInset, end = 8.dp),
-                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.65f),
+                    .padding(top = topInset, end = 6.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f),
                 textAlign = TextAlign.End,
-                style = codeStyle,
+                style = codeStyle.copy(fontSize = 10.5.sp * scale),
             )
         }
         BasicTextField(
@@ -732,7 +766,7 @@ private fun NumberedTextEditor(
                 .fillMaxHeight()
                 .horizontalScroll(horizontal)
                 .verticalScroll(vertical)
-                .padding(start = 10.dp, end = 12.dp, top = topInset, bottom = 74.dp),
+                .padding(start = 9.dp, end = 10.dp, top = topInset, bottom = 58.dp),
             textStyle = codeStyle.copy(color = MaterialTheme.colorScheme.onSurface),
             cursorBrush = SolidColor(MaterialTheme.colorScheme.primary),
         )
@@ -788,7 +822,7 @@ private fun NewEntryDialog(directory: Boolean, onClose: () -> Unit, onCreate: (S
     var name by remember { mutableStateOf("") }
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text(stringResource(if (directory) R.string.new_folder else R.string.new_file)) },
+        title = { Text(stringResource(if (directory) R.string.new_folder else R.string.new_file), style = MaterialTheme.typography.titleLarge) },
         text = { GlassOutlinedField(name, { name = it }, stringResource(R.string.file_name)) },
         confirmButton = {
             Button(onClick = { onCreate(name) }, enabled = name.isNotBlank(), shape = CircleShape) {
@@ -804,7 +838,7 @@ private fun MoveDialog(document: OpenDocument?, viewModel: HarnessViewModel, onC
     var destination by remember(document?.entry?.path) { mutableStateOf(document?.entry?.path.orEmpty()) }
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text(stringResource(R.string.rename_move)) },
+        title = { Text(stringResource(R.string.rename_move), style = MaterialTheme.typography.titleLarge) },
         text = { GlassOutlinedField(destination, { destination = it }, stringResource(R.string.destination_path)) },
         confirmButton = {
             Button(onClick = { viewModel.moveSelected(destination); onClose() }, enabled = destination.isNotBlank(), shape = CircleShape) {
@@ -820,14 +854,14 @@ private fun TrashDialog(state: HarnessState, viewModel: HarnessViewModel, onClos
     val palette = LocalGlassPalette.current
     AlertDialog(
         onDismissRequest = onClose,
-        title = { Text(stringResource(R.string.trash)) },
+        title = { Text(stringResource(R.string.trash), style = MaterialTheme.typography.titleLarge) },
         text = {
             if (state.trash.isEmpty()) {
-                Text(stringResource(R.string.no_trash))
+                Text(stringResource(R.string.no_trash), style = MaterialTheme.typography.bodySmall)
             } else {
-                LazyColumn(Modifier.fillMaxWidth().height(320.dp)) {
+                LazyColumn(Modifier.fillMaxWidth().height(260.dp)) {
                     items(state.trash, key = { it.id }) { item ->
-                        Row(Modifier.fillMaxWidth().padding(vertical = 5.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Row(Modifier.fillMaxWidth().padding(vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                             Text(
                                 item.path,
                                 modifier = Modifier.weight(1f),
@@ -838,7 +872,8 @@ private fun TrashDialog(state: HarnessState, viewModel: HarnessViewModel, onClos
                             IconButton(
                                 onClick = { viewModel.restoreTrash(item.id) },
                                 enabled = "files.delete" in state.device?.scopes.orEmpty(),
-                            ) { Icon(Icons.Outlined.RestoreFromTrash, stringResource(R.string.restore)) }
+                                modifier = Modifier.size(28.dp),
+                            ) { Icon(Icons.Outlined.RestoreFromTrash, stringResource(R.string.restore), Modifier.size(16.dp)) }
                         }
                         HorizontalDivider(color = palette.divider)
                     }
