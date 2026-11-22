@@ -9,13 +9,13 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-v1.2.0-087f8c">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.2.1-087f8c">
   <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3ddc84">
   <img alt="Jetpack Compose" src="https://img.shields.io/badge/UI-Jetpack_Compose-2563eb">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0-2da44e">
 </p>
 
-`dsh-android-app` 是 DeepSeek Harness 的原生 Android 客户端。它通过 [dsh-workspace](https://github.com/Hakunm/dsh-workspace) 连接你自己的 DSH WebUI，让手机与网页端使用同一套工作区、会话、模型和文件。
+`dsh-android-app` 是 DeepSeek Harness 的原生 Android 客户端。它通过 [dsh-workspace](https://github.com/Hakunm/dsh-workspace) 连接你自己的 DSH 桌面客户端或 WebUI，让手机与电脑端使用同一套工作区、会话、模型和文件。
 
 你可以在手机上继续聊天、查看任务进度、处理审批与提问、切换权限与模型，也可以直接浏览、搜索和编辑服务器允许访问的文件。App 默认中文，可在设置中切换 English，外观默认跟随系统自动切换浅色/深色模式。
 
@@ -121,15 +121,15 @@
 从 [GitHub Releases](https://github.com/Hakunm/dsh-android-app/releases/latest) 下载：
 
 ```text
-DeepSeek-Harness-v1.2.0.apk
+DeepSeek-Harness-v1.2.1.apk
 ```
 
 安装要求：
 
 - Android 8.0（API 26）或更高版本
-- 已运行的 DeepSeek Harness WebUI
-- DSH WebUI 已安装 `dsh-workspace` v1.2.0 或兼容版本
-- 插件中至少添加了一个授权根，并已启用远程访问
+- 已运行的 DeepSeek Harness 桌面客户端或 WebUI
+- 已安装 `dsh-workspace` v1.2.0 或兼容版本（桌面客户端需 v1.3.0+）
+- 插件中至少添加了一个具体工作目录作为授权根，并已启用远程访问
 - 手机可以访问插件配置的 IP、域名和端口
 
 正式 APK 使用项目独立的发布证书签名，不使用 Android 测试签名。后续版本需要使用同一证书，才能直接覆盖更新。
@@ -138,8 +138,8 @@ DeepSeek-Harness-v1.2.0.apk
 
 ### 服务器端
 
-1. 在 DSH WebUI 打开 `dsh-workspace` 的“工作区设置”。
-2. 添加至少一个授权根目录。
+1. 在 DSH 桌面客户端或 WebUI 打开 `dsh-workspace` 的“工作区设置”。
+2. 添加至少一个具体的项目或用户文件夹作为授权根目录（安全边界会拦截系统锁文件，请勿直接挂载整个系统盘符根目录如 `C:\` 或 `/`）。
 3. 在“远程访问”页填写绑定 IP 和端口，并保存监听设置。
 4. 点击“启用并创建配对”，取得十分钟内有效的一次性配对码。
 

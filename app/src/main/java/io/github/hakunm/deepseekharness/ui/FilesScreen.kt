@@ -48,6 +48,7 @@ import androidx.compose.material.icons.outlined.ExpandMore
 import androidx.compose.material.icons.outlined.FileOpen
 import androidx.compose.material.icons.outlined.Folder
 import androidx.compose.material.icons.outlined.FolderOpen
+import androidx.compose.material.icons.outlined.Lock
 import androidx.compose.material.icons.outlined.MoreHoriz
 import androidx.compose.material.icons.outlined.MoreVert
 import androidx.compose.material.icons.outlined.Refresh
@@ -389,7 +390,61 @@ private fun FileBrowser(
 
         val entries = fileSearchResults?.entries ?: state.directory?.entries.orEmpty()
 
-        if (entries.isEmpty()) {
+        if (!searchActive && state.directory == null && state.directoryError != null) {
+            Box(
+                Modifier
+                    .weight(1f)
+                    .fillMaxWidth()
+                    .padding(horizontal = 16.dp, vertical = 12.dp),
+                contentAlignment = Alignment.Center,
+            ) {
+                GroupedCard(
+                    modifier = Modifier.fillMaxWidth().widthIn(max = 420.dp),
+                    cornerRadius = 18.dp,
+                    contentPadding = PaddingValues(18.dp),
+                ) {
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(10.dp),
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(42.dp)
+                                .clip(CircleShape)
+                                .background(palette.warningTint, CircleShape),
+                            contentAlignment = Alignment.Center,
+                        ) {
+                            Icon(
+                                Icons.Outlined.Lock,
+                                contentDescription = null,
+                                modifier = Modifier.size(19.dp),
+                                tint = palette.warningText,
+                            )
+                        }
+                        Text(
+                            stringResource(R.string.protected_directory_title),
+                            style = MaterialTheme.typography.titleMedium,
+                            color = MaterialTheme.colorScheme.onBackground,
+                            textAlign = TextAlign.Center,
+                        )
+                        Text(
+                            localizeError(state.directoryError),
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant,
+                            textAlign = TextAlign.Center,
+                        )
+                        SecondaryPillButton(
+                            onClick = { viewModel.loadDirectory() },
+                            enabled = !state.busy,
+                            height = 36.dp,
+                        ) {
+                            Icon(Icons.Outlined.Refresh, null, Modifier.size(15.dp))
+                            Text(stringResource(R.string.retry_load), style = MaterialTheme.typography.labelMedium)
+                        }
+                    }
+                }
+            }
+        } else if (entries.isEmpty()) {
             Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
                 EmptyState(
                     Icons.Outlined.FolderOpen,

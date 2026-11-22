@@ -39,3 +39,5 @@
 | FEATURE-001 | done | 补全 `dsh-workspace` `v1.2.0` 全部新增能力：会话置顶/取消置顶、归档恢复、全文搜索、递归文件搜索、排队消息编辑/插队/删除、Agent 交互式提问卡片、图片附件发送、动态权限目录、健康能力与自定义供应商删除 |
 | UI-005 | done | 基于 `Kyant0/AndroidLiquidGlass`（`backdrop 2.0.0` + `shapes 1.2.0`）重构高密度通透 Apple Liquid Glass 浅色/深色玻璃界面、五槽悬浮液态玻璃底栏、独立工作区页与悬浮玻璃聊天/编辑器控件 |
 | REL-005 | done | 发布 `dsh-android-app` `v1.2.0`（versionCode `10200`、compileSdk `37`），更新全部 6 张液态玻璃截图、中英文 README、项目文档、正式签名 APK 与 GitHub Release |
+| SEC-001 | done | 保持服务端系统锁文件与符号链接安全拦截边界不变的前提下，App 配对/重连不再因受保护盘符根目录（如 `C:\`、`/`）阻塞进入，并在顶部通知、文件浏览与工作区目录选择器给出明确中英双语安全提示与处理指引 |
+| REL-006 | done | 发布 `dsh-android-app` `v1.2.1`（versionCode `10201`），补充桌面客户端连接说明、受保护根目录错误分类单测与正式签名 APK |

@@ -1,5 +1,9 @@
 # 开发日志
 
+## 2026-11-22 · v1.2.1
+
+- 完成 `SEC-001` 与 `REL-006`：保留宿主系统盘锁文件与符号链接拦截边界不变，修复挂载受保护盘符根目录（如 `C:\`、`/`）时阻塞配对/重连进入主界面的问题；新增 `classifyDirectoryAccessError` 与中英双语安全提示（覆盖顶部胶囊通知、Code 文件页受保护目录说明卡片与新建工作区目录选择器提示），并优化一次性配对码重复使用/过期提示；升级至 `1.2.1`（`versionCode = 10201`，正式签名 APK 2,675,916 字节，SHA-256 `20EDB6CF8AE6D3735E9ABDA29CF5CC88BE78EB76DFC2A38F1E464DDDA7E427B5`）。
+
 ## 2026-11-22 · v1.2.0
 
 - 完成 `UI-005` 极简双模式重构：采用清透冰瓷（`#F6F8FB` 浅色）与静谧夜枭（`#171715` 深色）自动跟随系统双模式色板，重构为左侧无框侧滑抽屉、留白对话主页、底部悬浮胶囊输入栏、`+` 圆角操作面板、无框 Markdown 对话流与分组圆角卡片设置页；通过 `docsCheck testDebugUnitTest lintDebug connectedDebugAndroidTest assembleRelease` 全量校验。

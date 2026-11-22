@@ -831,7 +831,7 @@ private fun FloatingErrorPill(message: String, onDismiss: () -> Unit) {
             modifier = Modifier.weight(1f),
             color = palette.dangerText,
             style = MaterialTheme.typography.bodySmall,
-            maxLines = 3,
+            maxLines = 6,
             overflow = TextOverflow.Ellipsis,
         )
         Box(
@@ -847,7 +847,17 @@ private fun FloatingErrorPill(message: String, onDismiss: () -> Unit) {
 }
 
 @Composable
-private fun localizeError(error: String): String = when {
+internal fun localizeError(error: String): String = when {
+    error.startsWith("PROTECTED_DRIVE_ROOT|") ->
+        stringResource(R.string.protected_drive_root_error, error.substringAfter('|'))
+    error.startsWith("PROTECTED_DIRECTORY|") ->
+        stringResource(R.string.protected_directory_error, error.substringAfter('|'))
+    error.startsWith("LINK_TRAVERSAL_FORBIDDEN|") ->
+        stringResource(R.string.link_traversal_error, error.substringAfter('|'))
+    error.startsWith("DIRECTORY_NOT_FOUND|") ->
+        stringResource(R.string.directory_not_found_error, error.substringAfter('|'))
+    error.startsWith("PAIRING_INVALID") || error.startsWith("PAIRING_EXPIRED") ->
+        stringResource(R.string.pairing_invalid_error)
     error == "FILE_TOO_LARGE" -> stringResource(R.string.file_too_large)
     error == "IMAGE_TOO_LARGE" -> stringResource(R.string.image_too_large)
     error.startsWith("ETAG_MISMATCH") -> stringResource(R.string.etag_conflict)

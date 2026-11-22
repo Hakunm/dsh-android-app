@@ -255,4 +255,11 @@
     <string name="clear_search">Clear search</string>
     <string name="name">Name</string>
     <string name="version">Current version</string>
+    <string name="protected_directory_title">Protected system directory</string>
+    <string name="protected_drive_root_error">Cannot list system drive root (%1$s) because it contains OS-protected files blocked by security policy. In Desktop/WebUI Workspace Settings → Roots, authorize a specific project or user folder instead.</string>
+    <string name="protected_directory_error">Cannot read folder “%1$s” because it contains OS-protected or restricted files (such as an entire system drive or protected folder). Authorize a specific project or user folder in Workspace Settings → Roots instead.</string>
+    <string name="link_traversal_error">Security policy blocks traversing symbolic links or junctions (%1$s). Add its real target folder directly in Workspace Settings → Roots.</string>
+    <string name="directory_not_found_error">Folder “%1$s” no longer exists or was removed. Check Workspace Settings → Roots and refresh.</string>
+    <string name="pairing_invalid_error">Invalid or expired one-time pairing code. Generate a new pairing code in Workspace Settings → Remote Access and try again.</string>
+    <string name="retry_load">Retry</string>
 </resources>

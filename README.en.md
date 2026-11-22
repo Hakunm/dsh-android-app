@@ -9,13 +9,13 @@
 </p>
 
 <p align="center">
-  <img alt="Version" src="https://img.shields.io/badge/version-v1.2.0-087f8c">
+  <img alt="Version" src="https://img.shields.io/badge/version-v1.2.1-087f8c">
   <img alt="Android" src="https://img.shields.io/badge/Android-8.0%2B-3ddc84">
   <img alt="Jetpack Compose" src="https://img.shields.io/badge/UI-Jetpack_Compose-2563eb">
   <img alt="License" src="https://img.shields.io/badge/license-AGPL--3.0-2da44e">
 </p>
 
-`dsh-android-app` is a native Android client for your own DeepSeek Harness installation. It connects through [dsh-workspace](https://github.com/Hakunm/dsh-workspace), keeping your phone and DSH WebUI on the same workspaces, sessions, models, and files.
+`dsh-android-app` is a native Android client for your own DeepSeek Harness installation. It connects through [dsh-workspace](https://github.com/Hakunm/dsh-workspace), keeping your phone and DSH Desktop or WebUI on the same workspaces, sessions, models, and files.
 
 Continue conversations, follow task progress, decide approvals and interactive questions, switch permissions and models, or browse, search, and edit authorized server files from your phone. The app defaults to Chinese, supports switching to English, and automatically follows the system Light/Dark appearance by default.
 
@@ -121,15 +121,15 @@ Continue conversations, follow task progress, decide approvals and interactive q
 Download the latest release from [GitHub Releases](https://github.com/Hakunm/dsh-android-app/releases/latest):
 
 ```text
-DeepSeek-Harness-v1.2.0.apk
+DeepSeek-Harness-v1.2.1.apk
 ```
 
 Requirements:
 
 - Android 8.0 / API 26 or newer
-- A running DeepSeek Harness WebUI installation
-- `dsh-workspace` v1.2.0 or a compatible release installed in DSH WebUI
-- At least one authorized root and remote access enabled in the plugin
+- A running DeepSeek Harness Desktop or WebUI installation
+- `dsh-workspace` v1.2.0 or a compatible release installed (`v1.3.0+` for DSH Desktop)
+- At least one authorized project/user folder root and remote access enabled in the plugin
 - Network reachability from the phone to the configured IP/domain and port
 
 The production APK uses a dedicated release certificate, not the Android debug key. Future releases must use the same certificate for in-place upgrades.
@@ -138,8 +138,8 @@ The production APK uses a dedicated release certificate, not the Android debug k
 
 ### On the server
 
-1. Open **Workspace settings** for `dsh-workspace` in DSH WebUI.
-2. Add at least one authorized root.
+1. Open **Workspace settings** for `dsh-workspace` in DSH Desktop or WebUI.
+2. Add at least one specific project or user folder as an authorized root (avoid mounting an entire OS drive root such as `C:\` or `/`, which contains OS-protected files blocked by security policy).
 3. Enter the bind IP and port under **Remote access**, then save the listener settings.
 4. Select **Enable and create pairing** to receive a ten-minute one-time code.
 

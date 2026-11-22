@@ -2266,7 +2266,9 @@ internal fun NewSessionSheet(
     var rootMenu by remember { mutableStateOf(false) }
     var presetMenu by remember { mutableStateOf(false) }
     LaunchedEffect(createWorkspace) {
-        if (createWorkspace && state.workspacePickerDirectory == null) viewModel.prepareWorkspacePicker()
+        if (createWorkspace && state.workspacePickerDirectory == null && state.workspacePickerError == null) {
+            viewModel.prepareWorkspacePicker()
+        }
     }
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     ModalBottomSheet(
@@ -2383,7 +2385,11 @@ internal fun NewSessionSheet(
                             )
                         }
                         val directories = state.workspacePickerDirectory?.entries.orEmpty().filter { it.kind == "directory" }
-                        if (directories.isEmpty()) {
+                        if (state.workspacePickerDirectory == null && state.workspacePickerError != null) {
+                            Box(Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 10.dp)) {
+                                WarningBanner(localizeError(state.workspacePickerError))
+                            }
+                        } else if (directories.isEmpty()) {
                             Text(
                                 stringResource(R.string.no_subdirectories),
                                 modifier = Modifier.fillMaxWidth().padding(horizontal = 14.dp, vertical = 10.dp),

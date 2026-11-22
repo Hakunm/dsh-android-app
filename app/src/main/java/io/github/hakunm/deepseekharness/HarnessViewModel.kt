@@ -124,6 +124,7 @@ data class HarnessState(
     val workspacePickerRootId: String? = null,
     val workspacePickerPath: String = "",
     val workspacePickerDirectory: DirectoryPage? = null,
+    val workspacePickerError: String? = null,
     val sessionModels: SessionModels? = null,
     val sessionState: SessionState? = null,
     val commands: List<CommandDescriptor> = emptyList(),
@@ -139,6 +140,7 @@ data class HarnessState(
     val selectedRootId: String? = null,
     val currentPath: String = "",
     val directory: DirectoryPage? = null,
+    val directoryError: String? = null,
     val fileSearchQuery: String = "",
     val fileSearchResults: FileSearchResult? = null,
     val searchingFiles: Boolean = false,
@@ -245,6 +247,7 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
             pluginVersion = health?.pluginVersion ?: mutableState.value.serverPluginVersion,
             capabilities = health?.capabilities ?: mutableState.value.capabilities,
             includeArchived = showArchived,
+            preferredRootId = mutableState.value.selectedRootId,
         )
         update {
             snapshot.copy(
@@ -255,8 +258,6 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
                 showArchived = showArchived,
                 sessions = snapshot.sessions.preservingTitles(sessions),
                 selectedSessionId = selectedSessionId?.takeIf { id -> snapshot.sessions.any { it.id == id } },
-                selectedRootId = selectedRootId?.takeIf { id -> snapshot.roots.any { it.id == id } }
-                    ?: snapshot.roots.firstOrNull()?.id,
             )
         }
     }
@@ -389,20 +390,61 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
             ?.takeIf { id -> mutableState.value.roots.any { it.id == id } }
             ?: mutableState.value.selectedRootId
             ?: mutableState.value.roots.firstOrNull()?.id
-        update { copy(workspacePickerRootId = rootId, workspacePickerPath = "", workspacePickerDirectory = null) }
+        update {
+            copy(
+                workspacePickerRootId = rootId,
+                workspacePickerPath = "",
+                workspacePickerDirectory = null,
+                workspacePickerError = null,
+            )
+        }
         if (rootId != null) loadWorkspacePickerDirectory("")
     }
 
     fun selectWorkspacePickerRoot(rootId: String) {
-        update { copy(workspacePickerRootId = rootId, workspacePickerPath = "", workspacePickerDirectory = null) }
+        update {
+            copy(
+                workspacePickerRootId = rootId,
+                workspacePickerPath = "",
+                workspacePickerDirectory = null,
+                workspacePickerError = null,
+            )
+        }
         loadWorkspacePickerDirectory("")
     }
 
     fun loadWorkspacePickerDirectory(path: String) = withClient { api ->
         val rootId = mutableState.value.workspacePickerRootId ?: return@withClient
+        val rootLabel = mutableState.value.roots.find { it.id == rootId }?.label
         val normalized = path.trim('/')
-        val page = api.entries(rootId, normalized)
-        update { copy(workspacePickerPath = normalized, workspacePickerDirectory = page) }
+        runCatching { api.entries(rootId, normalized) }
+            .onSuccess { page ->
+                update {
+                    copy(
+                        workspacePickerPath = normalized,
+                        workspacePickerDirectory = page,
+                        workspacePickerError = null,
+                    )
+                }
+            }
+            .onFailure { err ->
+                val friendly = classifyDirectoryAccessError(rootLabel, normalized, err)
+                val keepParent = normalized.isNotEmpty() &&
+                    mutableState.value.workspacePickerPath != normalized &&
+                    mutableState.value.workspacePickerDirectory != null
+                if (keepParent) {
+                    update { copy(error = friendly) }
+                } else {
+                    update {
+                        copy(
+                            workspacePickerPath = normalized,
+                            workspacePickerDirectory = null,
+                            workspacePickerError = friendly,
+                            error = friendly,
+                        )
+                    }
+                }
+            }
     }
 
     fun createWorkspaceAndSession(rootId: String, path: String, preset: String?) = withClient { api ->
@@ -814,6 +856,8 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
             copy(
                 selectedRootId = id,
                 currentPath = "",
+                directory = null,
+                directoryError = null,
                 document = null,
                 fileSearchQuery = "",
                 fileSearchResults = null,
@@ -837,12 +881,15 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
         }
         val api = client ?: return
         val root = mutableState.value.selectedRootId ?: return
+        val rootLabel = mutableState.value.roots.find { it.id == root }?.label
         val basePath = mutableState.value.currentPath
         viewModelScope.launch {
             update { copy(fileSearchQuery = query, searchingFiles = true, error = null) }
             runCatching { withContext(Dispatchers.IO) { api.searchFiles(root, trimmed, basePath) } }
                 .onSuccess { result -> update { copy(fileSearchResults = result, searchingFiles = false) } }
-                .onFailure { error -> update { copy(searchingFiles = false, error = messageOf(error)) } }
+                .onFailure { error ->
+                    update { copy(searchingFiles = false, error = classifyDirectoryAccessError(rootLabel, basePath, error)) }
+                }
         }
     }
 
@@ -852,9 +899,31 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
 
     fun loadDirectory(path: String = mutableState.value.currentPath) = withClient { api ->
         val root = mutableState.value.selectedRootId ?: return@withClient
+        val rootLabel = mutableState.value.roots.find { it.id == root }?.label
         val normalized = path.trim('/')
-        val page = api.entries(root, normalized)
-        update { copy(currentPath = normalized, directory = page, document = null) }
+        runCatching { api.entries(root, normalized) }
+            .onSuccess { page ->
+                update { copy(currentPath = normalized, directory = page, directoryError = null, document = null) }
+            }
+            .onFailure { err ->
+                val friendly = classifyDirectoryAccessError(rootLabel, normalized, err)
+                val keepParent = normalized.isNotEmpty() &&
+                    mutableState.value.currentPath != normalized &&
+                    mutableState.value.directory != null
+                if (keepParent) {
+                    update { copy(document = null, error = friendly) }
+                } else {
+                    update {
+                        copy(
+                            currentPath = normalized,
+                            directory = null,
+                            directoryError = friendly,
+                            document = null,
+                            error = friendly,
+                        )
+                    }
+                }
+            }
     }
 
     fun loadNextDirectoryPage() = withClient { api ->
@@ -1083,16 +1152,51 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
         pluginVersion: String? = null,
         capabilities: List<String> = emptyList(),
         includeArchived: Boolean = false,
+        preferredRootId: String? = null,
     ): HarnessState {
-        val roots = if ("files.read" in device.scopes) api.roots() else emptyList()
+        val canReadFiles = "files.read" in device.scopes
+        val roots = if (canReadFiles) api.roots() else emptyList()
         val canReadChat = "chat.read" in device.scopes
         val sessions = if (canReadChat) api.sessions(includeArchived) else emptyList()
         val chatWorkspaces = if (canReadChat) api.chatWorkspaces() else emptyList()
         val agentPresets = if (canReadChat) api.agentPresets() else emptyList()
         val permissionCatalog = if (canReadChat) runCatching { api.permissionCatalog() }.getOrNull() else null
         val canReadSettings = "settings.read" in device.scopes
-        val selectedRoot = roots.firstOrNull()?.id
-        val directory = selectedRoot?.let { api.entries(it) }
+
+        val orderedRoots = if (preferredRootId != null) {
+            val preferred = roots.find { it.id == preferredRootId }
+            if (preferred != null) listOf(preferred) + roots.filterNot { it.id == preferredRootId } else roots
+        } else {
+            roots
+        }
+        var selectedRoot: String? = null
+        var directory: DirectoryPage? = null
+        var directoryError: String? = null
+        var initialError: String? = null
+        if (canReadFiles && orderedRoots.isNotEmpty()) {
+            var firstFailedRootId: String? = null
+            var firstFailure: String? = null
+            for (candidate in orderedRoots) {
+                val attempt = runCatching { api.entries(candidate.id) }
+                if (attempt.isSuccess) {
+                    selectedRoot = candidate.id
+                    directory = attempt.getOrNull()
+                    initialError = firstFailure
+                    break
+                } else {
+                    val err = attempt.exceptionOrNull()
+                    if (err != null && firstFailure == null) {
+                        firstFailedRootId = candidate.id
+                        firstFailure = classifyDirectoryAccessError(candidate.label, "", err)
+                    }
+                }
+            }
+            if (directory == null) {
+                selectedRoot = firstFailedRootId ?: orderedRoots.first().id
+                directoryError = firstFailure
+                initialError = firstFailure
+            }
+        }
         return HarnessState(
             restoring = false,
             hasSavedConnection = true,
@@ -1111,8 +1215,11 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
             permissionCatalog = permissionCatalog,
             providerSettings = if (canReadSettings) api.providerSettings() else null,
             selectedRootId = selectedRoot,
+            currentPath = "",
             directory = directory,
-            trash = if ("files.read" in device.scopes) api.trash() else emptyList(),
+            directoryError = directoryError,
+            trash = if (canReadFiles) runCatching { api.trash() }.getOrDefault(emptyList()) else emptyList(),
+            error = initialError,
         )
     }
 
@@ -1214,10 +1321,7 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
     private fun childPath(parent: String, name: String): String =
         if (parent.isBlank()) name.trim('/') else "$parent/${name.trim('/')}"
 
-    private fun messageOf(error: Throwable): String = when (error) {
-        is DshApiException -> "${error.code}: ${error.message}"
-        else -> error.message ?: error::class.java.simpleName
-    }
+    private fun messageOf(error: Throwable): String = formatErrorMessage(error)
 
     private companion object {
         const val MAX_EDIT_BYTES = 2L * 1024 * 1024
@@ -1226,6 +1330,60 @@ class HarnessViewModel(application: Application) : AndroidViewModel(application)
         val SUPPORTED_IMAGE_TYPES = setOf("image/png", "image/jpeg", "image/webp", "image/gif")
         val UTF8_BOM = byteArrayOf(0xEF.toByte(), 0xBB.toByte(), 0xBF.toByte())
     }
+}
+
+private val WINDOWS_DRIVE_ROOT_REGEX = Regex("^[A-Za-z]:[\\\\/]?$")
+
+internal fun isSystemDriveRoot(label: String?): Boolean {
+    val trimmed = label?.trim().orEmpty()
+    return trimmed == "/" || WINDOWS_DRIVE_ROOT_REGEX.matches(trimmed)
+}
+
+internal fun displayDirectoryTarget(rootLabel: String?, relativePath: String): String {
+    val root = rootLabel?.trim().orEmpty()
+    val rel = relativePath.trim('/')
+    return when {
+        root.isEmpty() && rel.isEmpty() -> "/"
+        root.isEmpty() -> "/$rel"
+        rel.isEmpty() -> root
+        root.endsWith('\\') || root.endsWith('/') -> "$root$rel"
+        else -> "$root/$rel"
+    }
+}
+
+internal fun classifyDirectoryAccessError(
+    rootLabel: String?,
+    relativePath: String,
+    error: Throwable,
+): String {
+    val normalizedPath = relativePath.trim('/')
+    val target = displayDirectoryTarget(rootLabel, normalizedPath)
+    if (error is DshApiException) {
+        if (error.code == "LINK_TRAVERSAL_FORBIDDEN") {
+            return "LINK_TRAVERSAL_FORBIDDEN|$target"
+        }
+        if (error.code == "ROOT_NOT_FOUND" || error.code == "PATH_NOT_FOUND") {
+            return "DIRECTORY_NOT_FOUND|$target"
+        }
+        val isProtectedFailure = error.code == "INTERNAL_ERROR" ||
+            error.code == "ACCESS_DENIED" ||
+            error.code == "PERMISSION_DENIED" ||
+            error.status == 403 ||
+            error.status == 500
+        if (isProtectedFailure) {
+            return if (normalizedPath.isEmpty() && isSystemDriveRoot(rootLabel)) {
+                "PROTECTED_DRIVE_ROOT|$target"
+            } else {
+                "PROTECTED_DIRECTORY|$target"
+            }
+        }
+    }
+    return formatErrorMessage(error)
+}
+
+internal fun formatErrorMessage(error: Throwable): String = when (error) {
+    is DshApiException -> "${error.code}: ${error.message}"
+    else -> error.message ?: error::class.java.simpleName
 }
 
 private fun WorkspaceEvent.dataString(key: String): String? =
